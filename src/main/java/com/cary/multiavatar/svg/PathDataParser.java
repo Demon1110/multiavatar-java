@@ -207,12 +207,22 @@ public final class PathDataParser {
         }
 
         private void smoothCubic(double x2, double y2, double x, double y, boolean rel) {
+            // 反射控制点恒为绝对坐标（相对上一 C/S 的第二控制点关于当前点镜像）
             double x1 = cx, y1 = cy;
             if (lastCmd == 'C' || lastCmd == 'c' || lastCmd == 'S' || lastCmd == 's') {
                 x1 = 2 * cx - prevCubicX;
                 y1 = 2 * cy - prevCubicY;
             }
-            cubic(x1, y1, x2, y2, x, y, rel);
+            // 终点与第二控制点按相对/绝对处理；不再走 cubic()（避免反射点被二次偏移）
+            double ax2 = rel ? cx + x2 : x2;
+            double ay2 = rel ? cy + y2 : y2;
+            double ax = rel ? cx + x : x;
+            double ay = rel ? cy + y : y;
+            path.curveTo(x1, y1, ax2, ay2, ax, ay);
+            prevCubicX = ax2;
+            prevCubicY = ay2;
+            cx = ax;
+            cy = ay;
         }
 
         private void quad(double x1, double y1, double x, double y, boolean rel) {
@@ -235,12 +245,24 @@ public final class PathDataParser {
         }
 
         private void smoothQuad(double x, double y, boolean rel) {
+            // 反射控制点恒为绝对坐标
             double x1 = cx, y1 = cy;
             if (lastCmd == 'Q' || lastCmd == 'q' || lastCmd == 'T' || lastCmd == 't') {
                 x1 = 2 * cx - prevQuadX;
                 y1 = 2 * cy - prevQuadY;
             }
-            quad(x1, y1, x, y, rel);
+            double ax = rel ? cx + x : x;
+            double ay = rel ? cy + y : y;
+            // Path2D 无 quadTo，用三次贝塞尔等价表示
+            double c1x = cx + 2.0 / 3.0 * (x1 - cx);
+            double c1y = cy + 2.0 / 3.0 * (y1 - cy);
+            double c2x = ax + 2.0 / 3.0 * (x1 - ax);
+            double c2y = ay + 2.0 / 3.0 * (y1 - ay);
+            path.curveTo(c1x, c1y, c2x, c2y, ax, ay);
+            prevQuadX = x1;
+            prevQuadY = y1;
+            cx = ax;
+            cy = ay;
         }
 
         // ---------- 数字读取 ----------
