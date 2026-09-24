@@ -24,6 +24,7 @@ nbbuild/
 dist/
 nbdist/
 .nb-gradle/
+demo/
 
 ### Mac files ###
 *.DS_Store

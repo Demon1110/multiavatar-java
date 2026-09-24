@@ -1,214 +1,188 @@
 package com.cary.multiavatar;
 
+import com.cary.multiavatar.core.SvgComposer;
+import com.cary.multiavatar.render.AvatarFormat;
+import com.cary.multiavatar.render.AvatarRenderer;
+import com.cary.multiavatar.render.Renderers;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
- * Multiavatar —— 多文化头像生成器，纯 Java 实现。
+ * Multiavatar —— 多文化头像生成器门面（Facade）。
  *
- * <p>移植自 <a href="https://github.com/multiavatar/Multiavatar">multiavatar.js</a>（Gie Katon, 2020-2021），
- * 不依赖任何第三方库，JDK 8 及以上即可运行。</p>
+ * <p>对外统一入口：隐藏 生成核心(core)、数据(data)、SVG 领域模型(svg)、渲染(render) 的细节。
+ * 保持与 multiavatar.js 一致的确定性算法 —— 同一输入永远产出同一头像
+ * （共 16^6 = 12,230,590,464 个唯一头像）。</p>
  *
- * <p>算法：对输入字符串做 SHA-256，取十六进制中前 12 位数字，每 2 位映射为一个 0-47 的部件编号；
- * 编号进一步换算成 16 个初始角色(00-15) + 3 个颜色主题(A/B/C)；每个角色部件对应的 SVG 模板中的
- * {@code #xxx;} 颜色占位符被该主题的颜色按序替换，最后按
- * env→head→clo→top→eyes→mouth 顺序拼装成完整 SVG。</p>
+ * <p><b>用法：</b></p>
+ * <pre>
+ * // SVG 文本（旧 API，兼容）
+ * String svg = Multiavatar.multiavatar("Binx Bond");
  *
- * <p>共可生成 16^6 = 12,230,590,464 个唯一头像。</p>
+ * // PNG 字节（新 API，纯 JDK 渲染，无第三方依赖）
+ * byte[] png = Multiavatar.toPng("Binx Bond");
+ * byte[] png512 = Multiavatar.toPng("Binx Bond", AvatarOptions.builder().size(512).build());
+ *
+ * // 头像对象（SVG + 按需 PNG）
+ * Avatar avatar = Multiavatar.avatar("Binx Bond");
+ * String s = avatar.svg();
+ * byte[] p = avatar.png(1024);
+ *
+ * // 直接写文件
+ * Multiavatar.writePng("Binx Bond", new File("avatar.png"));
+ * </pre>
  */
 public final class Multiavatar {
 
     /**
-     * 输出时的部件拼装顺序（与 multiavatar.js 一致）。
+     * 组装器（SHA-256 + 默认数据源），viewBox 与现行实现保持一致。
      */
-    private static final String[] PART_ORDER = {"env", "head", "clo", "top", "eyes", "mouth"};
-
-    /**
-     * 对应 JS 的 /#(.*?);/g —— 匹配形如 #fff; 的颜色占位符。
-     */
-    private static final Pattern COLOR_PH = Pattern.compile("#([^;]*);");
-
-    private static final String SVG_START = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\">";
-    private static final String SVG_END = "</svg>";
+    private static final SvgComposer COMPOSER = SvgComposer.withViewBox("0 0 256 256");
 
     private Multiavatar() {
     }
 
-    /**
-     * 生成头像 SVG（含环境背景圆）。
-     */
-    public static String multiavatar(String string) {
-        return multiavatar(string, false, null, null);
-    }
+    // ==================== 旧 API（与 multiavatar.js / 早期版本兼容） ====================
 
     /**
-     * 生成头像 SVG；{@code sansEnv=true} 时去掉背景圆（环境部件）。
+     * 生成头像 SVG（含背景圆）。
+     *
+     * @param string 输入字符串（头像标识）
+     * @return SVG 代码；输入为空字符串时返回空串（与 JS 一致）
      */
-    public static String multiavatar(String string, boolean sansEnv) {
-        return multiavatar(string, sansEnv, null, null);
+    public static String multiavatar(String string) {
+        return COMPOSER.compose(string, false, null, null);
     }
 
     /**
      * 生成头像 SVG。
      *
-     * @param string  输入字符串（头像标识）
+     * @param string  输入字符串
      * @param sansEnv 为 true 时输出不含背景圆（环境部件）
-     * @param part    强制指定初始角色编号，如 "00"~"15"（对应 JS 的 ver.part）；传 null 表示自动
-     * @param theme   强制指定颜色主题 "A"/"B"/"C"（对应 JS 的 ver.theme）；传 null 表示自动
-     * @return SVG 代码；当输入为空字符串时返回空串（与 JS 一致）
+     */
+    public static String multiavatar(String string, boolean sansEnv) {
+        return COMPOSER.compose(string, sansEnv, null, null);
+    }
+
+    /**
+     * 生成头像 SVG。
+     *
+     * @param string  输入字符串
+     * @param sansEnv 是否去掉背景圆
+     * @param part    强制指定初始角色编号 "00"~"15"（对应 JS 的 ver.part）；null 表示自动
+     * @param theme   强制指定颜色主题 "A"/"B"/"C"（对应 JS 的 ver.theme）；null 表示自动
      */
     public static String multiavatar(String string, boolean sansEnv, String part, String theme) {
-        if (string == null) {
-            string = "";
-        }
+        return COMPOSER.compose(string, sansEnv, part, theme);
+    }
 
-        // JS: if (string.length == 0) return hash;  —— 空字符串直接返回空串
-        if (string.isEmpty()) {
-            return "";
-        }
+    // ==================== 新 API（面向对象） ====================
 
-        // ---- SHA-256（标准实现，与 JS 内置 CryptoJS 输出一致，小写 hex）----
-        String hex = sha256Hex(string.getBytes(StandardCharsets.UTF_8));
-
-        // JS: sha256Numbers = hex.replace(/\D/g,'')  —— 去掉所有非数字字符
-        StringBuilder digits = new StringBuilder(64);
-        for (int i = 0; i < hex.length(); i++) {
-            char c = hex.charAt(i);
-            if (c >= '0' && c <= '9') {
-                digits.append(c);
-            }
-        }
-        // JS: hash = sha256Numbers.substring(0,12)  —— 取前 12 位数字
-        String hash = digits.length() >= 12 ? digits.substring(0, 12) : digits.toString();
-
-        // ---- 每 2 位数字 -> 0-47 的部件编号（JS: Math.round((47/100)*两位)）----
-        Map<String, Integer> parts = new LinkedHashMap<>();
-        parts.put("env", mapTo47(twoDigits(hash, 0)));
-        parts.put("clo", mapTo47(twoDigits(hash, 2)));
-        parts.put("head", mapTo47(twoDigits(hash, 4)));
-        parts.put("mouth", mapTo47(twoDigits(hash, 6)));
-        parts.put("eyes", mapTo47(twoDigits(hash, 8)));
-        parts.put("top", mapTo47(twoDigits(hash, 10)));
-
-        // ---- 编号 -> 初始角色(00-15) + 主题(A/B/C)（JS 第 738-754 行）----
-        Map<String, String> partKeys = new LinkedHashMap<>();
-        for (Map.Entry<String, Integer> e : parts.entrySet()) {
-            int nr = e.getValue();
-            int base;
-            String th;
-            if (nr > 31) {
-                base = nr - 32;
-                th = "C";
-            } else if (nr > 15) {
-                base = nr - 16;
-                th = "B";
-            } else {
-                base = nr;
-                th = "A";
-            }
-            partKeys.put(e.getKey(), two(base) + th);
-        }
-
-        // ---- 为每个部件取 SVG（JS: final[part] = getFinal(...)）----
-        Map<String, String> finalParts = new LinkedHashMap<>();
-        for (String partName : PART_ORDER) {
-            String key = partKeys.get(partName);
-            String partV = key.substring(0, 2); // 初始角色编号
-            String th = key.substring(2, 3);    // 主题
-            if (part != null) {
-                partV = part;
-            }
-            if (theme != null) {
-                th = theme;
-            }
-            finalParts.put(partName, getFinal(partName, partV, th));
-        }
-
-        // ---- sansEnv：去掉环境部件 ----
-        if (sansEnv) {
-            finalParts.put("env", "");
-        }
-
-        // ---- 按固定顺序拼装输出（JS 第 804 行）----
-        StringBuilder sb = new StringBuilder(4096);
-        sb.append(SVG_START);
-        for (String partName : PART_ORDER) {
-            sb.append(finalParts.get(partName));
-        }
-        sb.append(SVG_END);
-        return sb.toString();
+    /**
+     * 生成头像对象（默认选项，SVG 格式）。
+     */
+    public static Avatar avatar(String string) {
+        return avatar(string, AvatarOptions.defaults());
     }
 
     /**
-     * 对应 JS getFinal：用主题颜色按序替换 SVG 模板中的颜色占位符。
+     * 生成头像对象。
+     *
+     * @param string  输入字符串
+     * @param options 生成选项（sansEnv/part/theme/size/format）
      */
-    private static String getFinal(String partName, String partV, String theme) {
-        List<String> colors = MultiavatarData.THEMES.get(partV + theme).get(partName);
-        String svg = MultiavatarData.PARTS.get(partV).get(partName);
-        if (svg == null) {
-            return "";
+    public static Avatar avatar(String string, AvatarOptions options) {
+        if (options == null) {
+            options = AvatarOptions.defaults();
         }
-
-        // 提取所有 #xxx; 占位符（与 JS 的 match 一致，顺序保持）
-        Matcher m = COLOR_PH.matcher(svg);
-        List<String> result = new ArrayList<>();
-        while (m.find()) {
-            result.add(m.group(0));
-        }
-
-        String out = svg;
-        // JS: resultFinal.replace(result[i], colors[i]+';') —— 只替换第一个出现
-        for (int i = 0; i < result.size(); i++) {
-            out = out.replaceFirst(Pattern.quote(result.get(i)), Matcher.quoteReplacement(colors.get(i) + ";"));
-        }
-        return out;
+        String svg = COMPOSER.compose(string, options.sansEnv(), options.part(), options.theme());
+        return new Avatar(string == null ? "" : string, options, svg);
     }
 
     /**
-     * 对应 JS：Math.round((47/100) * 两位数字)，返回 0-47。
+     * 直接渲染为 PNG 字节（默认尺寸 256）。
      */
-    private static int mapTo47(int twoDigits) {
-        return (int) Math.round((47 / 100.0) * twoDigits);
+    public static byte[] toPng(String string) {
+        return toPng(string, AvatarOptions.defaults());
     }
 
     /**
-     * 从 hash（12 位数字）中取从 idx 开始的两位数字（idx 为 0/2/4/6/8/10）。
+     * 直接渲染为 PNG 字节（指定边长）。
      */
-    private static int twoDigits(String hash, int idx) {
-        if (idx + 2 > hash.length()) {
-            return 0;
+    public static byte[] toPng(String string, int size) {
+        return toPng(string, AvatarOptions.builder().size(size).build());
+    }
+
+    /**
+     * 直接渲染为 PNG 字节。
+     */
+    public static byte[] toPng(String string, AvatarOptions options) {
+        Avatar avatar = avatar(string, options);
+        return avatar.png(options.size());
+    }
+
+    /**
+     * 通用渲染入口：按格式与选项渲染。
+     *
+     * @param format SVG 返回文本 UTF-8 字节；PNG 返回 PNG 图片字节
+     */
+    public static byte[] render(String string, AvatarFormat format, AvatarOptions options) {
+        Avatar avatar = avatar(string, options);
+        if (avatar.isEmpty()) {
+            return new byte[0];
         }
-        return (hash.charAt(idx) - '0') * 10 + (hash.charAt(idx + 1) - '0');
+        AvatarRenderer renderer = Renderers.create(format);
+        return renderer.render(avatar.svg(), options.size());
     }
 
     /**
-     * 两位补零格式化。
+     * 将头像 PNG 写入文件（默认尺寸 256）。
      */
-    private static String two(int x) {
-        return x < 10 ? "0" + x : Integer.toString(x);
+    public static void writePng(String string, File file) throws IOException {
+        writePng(string, AvatarOptions.defaults(), file);
     }
 
     /**
-     * 计算 SHA-256 并输出小写十六进制。
+     * 将头像 PNG 写入文件。
      */
-    private static String sha256Hex(byte[] data) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] digest = md.digest(data);
-            StringBuilder sb = new StringBuilder(digest.length * 2);
-            for (byte b : digest) {
-                sb.append(Character.forDigit((b >> 4) & 0xF, 16));
-                sb.append(Character.forDigit(b & 0xF, 16));
+    public static void writePng(String string, AvatarOptions options, File file) throws IOException {
+        byte[] png = toPng(string, options);
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(png);
+        }
+    }
+
+    // ==================== 演示入口 ====================
+
+    /**
+     * 演示入口：
+     * <ul>
+     *   <li>无参数：为若干示例字符串生成 SVG 与 PNG 写入 ./demo/ 目录；</li>
+     *   <li>一个参数：把该参数作为输入字符串，将 SVG 打印到标准输出。</li>
+     * </ul>
+     */
+    public static void main(String[] args) throws Exception {
+        if (args.length == 1) {
+            System.out.print(multiavatar(args[0]));
+            return;
+        }
+
+        String[] samples = {"Binx Bond", "test", "张三", "user@example.com", "123456789"};
+        File dir = new File("demo");
+        dir.mkdirs();
+        for (String s : samples) {
+            String name = s.replaceAll("[^A-Za-z0-9_-]", "_");
+            try (java.io.Writer w = new java.io.OutputStreamWriter(
+                    new java.io.FileOutputStream(new File(dir, "avatar_" + name + ".svg")),
+                    StandardCharsets.UTF_8)) {
+                w.write(multiavatar(s));
             }
-            return sb.toString();
-        } catch (java.security.NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 不可用", e);
+            writePng(s, AvatarOptions.builder().size(256).build(),
+                    new File(dir, "avatar_" + name + ".png"));
+            System.out.println("已生成: " + dir.getAbsolutePath() + "\\avatar_" + name + ".{svg,png}");
         }
     }
 }

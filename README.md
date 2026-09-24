@@ -3,48 +3,153 @@
 Multiavatar —— 多文化头像生成器（Multicultural Avatar Maker）的**纯 Java 实现**。
 
 移植自 [`multiavatar.js`](https://github.com/multiavatar/Multiavatar)（Gie Katon，2020-2021）。
-**零第三方依赖，JDK 8+ 即可编译运行**，是一个标准 Maven 项目。
+**零第三方依赖，JDK 8+ 即可编译运行**，标准 Maven 项目，开箱即用。
 
 共可生成 **16^6 = 12,230,590,464** 个唯一头像，任何输入字符串都能确定性地映射为一个唯一头像（可作 identicon 使用）。
 
 ---
 
+## 能力一览
+
+| 能力         | 说明                                                                                         |
+|------------|--------------------------------------------------------------------------------------------|
+| **SVG 输出** | 完整头像 / 去背景（sansEnv）/ 强制角色+主题（ver）三种模式，与官方 JS **逐字符一致**                                     |
+| **PNG 输出** | 基于 JDK 自带 Java2D 光栅化，无需任何第三方 jar；任意尺寸（默认 256×256），透明背景                                     |
+| **零依赖**    | `pom.xml` 的 `<dependencies>` 为空，只用 JDK 标准库（java.awt / javax.imageio / MessageDigest / DOM） |
+
+---
+
 ## 算法原理
 
-1. 对输入字符串做 **SHA-256**（JDK 自带 `MessageDigest`，与 JS 内置 CryptoJS 输出一致）。
-2. 取十六进制结果中前 **12 位数字**，每 2 位数字经 `round(47/100 * 两位)` 映射为 0-47 的部件编号。
+1. 输入字符串做 **SHA-256**（JDK 自带 `MessageDigest`，与 JS 内置 CryptoJS 输出一致）。
+2. 取十六进制结果前 **12 位数字**，每 2 位经 `round(47/100 * 两位)` 映射为 0–47 的部件编号。
 3. 编号换算成 16 个初始角色（`00`–`15`）与 3 个颜色主题（`A`/`B`/`C`）。
-4. 每个角色部件的 SVG 模板中的 `#xxx;` 颜色占位符，被该主题的颜色**按序替换**。
-5. 按 `env → head → clo → top → eyes → mouth` 顺序拼装成完整 SVG。
+4. 角色部件 SVG 模板中的 `#xxx;` 颜色占位符被该主题的颜色**按序替换**（等价复刻 JS 的 `replaceFirst` 语义）。
+5. 按 `env → head → clo → top → eyes → mouth` 顺序拼装成完整 SVG（viewBox `0 0 256 256`）。
 
-角色与颜色数据（`MultiavatarData.java`）由脚本从 `multiavatar.js` 自动提取生成，可追溯、可复现。
+角色与颜色数据（`MultiavatarData.java`，约 86KB）由脚本从 `multiavatar.js` 自动提取生成，可追溯、可复现。
 
 ---
 
 ## 使用方式
 
-### 作为库调用
+### 作为库调用（SVG）
 
 ```java
 import com.cary.multiavatar.Multiavatar;
+import com.cary.multiavatar.AvatarOptions;
 
-String svg = Multiavatar.multiavatar("Binx Bond");                    // 完整头像（含背景圆）
-String svg2 = Multiavatar.multiavatar("test", true);                  // 去掉背景圆（sansEnv）
-String svg3 = Multiavatar.multiavatar("test", false, "00", "A");      // 强制角色 00 + 主题 A（对应 JS 的 ver）
+String svg1 = Multiavatar.multiavatar("Binx Bond");              // 完整头像（含背景圆）
+String svg2 = Multiavatar.multiavatar("test", true);             // 去掉背景圆（sansEnv）
+String svg3 = Multiavatar.multiavatar("test", false, "00", "A"); // 强制角色 00 + 主题 A（对应 JS 的 ver）
 ```
 
 三个重载分别对应 JS 的 `multiavatar(string)`、`multiavatar(string, sansEnv)`、
 `multiavatar(string, sansEnv, ver)`。输入为空字符串时返回空串（与 JS 一致）。
 
+### 作为库调用（PNG）
+
+```java
+// 最简单：默认 256×256 透明 PNG（字节数组）
+byte[] png = Multiavatar.toPng("Binx Bond");
+
+// 指定尺寸
+byte[] png2 = Multiavatar.toPng("Binx Bond", 512);
+
+// 高级选项：去背景 + 强制角色/主题 + 自定义尺寸 + 指定格式
+AvatarOptions opts = AvatarOptions.builder()
+        .sansEnv(true)
+        .part("07").theme("B")
+        .size(128)
+        .format(AvatarFormat.PNG)
+        .build();
+byte[] png3 = Multiavatar.toPng("Binx Bond", opts);
+
+// 直接写入文件
+Multiavatar.
+
+writePng("Binx Bond",opts, new File("avatar.png"));
+
+// 通用渲染入口
+byte[] data = Multiavatar.render("Binx Bond", AvatarFormat.SVG, opts);
+```
+
+### 面向对象的高级用法
+
+```java
+// 不可变产物：SVG 文本 + 惰性 PNG 渲染
+Avatar avatar = Multiavatar.avatar("Binx Bond");
+String svg = avatar.svg();
+byte[] png = avatar.png();            // 首次调用时渲染并缓存
+byte[] pngLarge = avatar.png(512);    // 指定尺寸重新渲染
+
+// 直接获取渲染器（策略模式），可自行扩展新格式
+AvatarRenderer renderer = Renderers.create(AvatarFormat.PNG);
+byte[] out = renderer.render(avatar.svg(), 256);
+```
+
 ### 命令行演示
 
 ```bash
-# 生成若干示例头像到 ./demo/ 目录
+# 生成 5 组示例头像（SVG + PNG）到 ./demo/ 目录
 java -cp target/classes com.cary.multiavatar.Multiavatar
 
 # 把参数作为输入，打印 SVG 到标准输出
 java -cp target/classes com.cary.multiavatar.Multiavatar "Binx Bond"
 ```
+
+---
+
+## 架构设计
+
+分层 + 设计模式，职责单一、可扩展、可测试。
+
+```
+src/main/java/com/cary/multiavatar/
+├── Multiavatar.java          # 门面（Facade）：兼容旧静态 API + 新 API + 演示 main
+├── Avatar.java               # 不可变产物对象：SVG 缓存 + 惰性 PNG
+├── AvatarOptions.java        # 构建者（Builder）：sansEnv / part / theme / size / format
+├── core/                     # 核心装配流水线
+│   ├── AvatarIdHasher        #   策略接口：字符串 → 哈希
+│   ├── Sha256AvatarIdHasher  #   策略实现：SHA-256 十六进制
+│   ├── PartNumberMapper      #   哈希 → 0-47 部件编号
+│   ├── PartKeyResolver       #   编号 → 角色 / 主题 / 部件键
+│   ├── AvatarSpec            #   不可变规格（含强制 part/theme，对应 JS ver）
+│   ├── SvgFragmentPainter    #   占位符颜色替换（replaceFirst 语义）
+│   └── SvgComposer           #   模板方法（Template Method）：固定拼装顺序，部件可注入
+├── svg/                      # 领域层：SVG 对象模型 + 解析 + 光栅化前处理
+│   ├── SvgDocument / SvgShape（抽象，paint 模板方法：先填充后描边）
+│   ├── SvgPath / SvgPolygon / SvgLine / SvgRect / SvgColor / SvgStyle
+│   ├── PathDataParser        #   path d 全指令解析（含 arc→三次贝塞尔，W3C F.6）
+│   ├── TransformParser       #   transform="matrix(...)" 解析
+│   └── SvgParser             #   JDK DOM 解析（XXE 防护）
+├── render/                   # 渲染策略层（Strategy）
+│   ├── AvatarFormat          #   枚举：SVG / PNG
+│   ├── AvatarRenderer        #   渲染器接口
+│   ├── SvgAvatarRenderer     #   SVG 渲染器（字节输出）
+│   ├── PngAvatarRenderer     #   PNG 渲染器（Java2D 光栅化 + ImageIO 编码）
+│   ├── SvgRasterizer         #   viewBox 等比缩放 + 居中 + 抗锯齿
+│   ├── PngWriter             #   PNG 编码
+│   └── Renderers             #   简单工厂（Simple Factory）
+├── data/
+│   └── DataTables            # 单例（Singleton）：MultiavatarData 只读访问
+└── util/
+    ├── Hashes                # SHA-256 十六进制
+    └── Strings               # 工具方法
+```
+
+### 用到的设计模式
+
+| 模式                      | 位置                                           | 说明                                   |
+|-------------------------|----------------------------------------------|--------------------------------------|
+| **Facade**              | `Multiavatar`                                | 统一入口，屏蔽底层分层细节                        |
+| **Strategy**            | `AvatarIdHasher` / `AvatarRenderer`          | 哈希算法、输出格式可替换扩展                       |
+| **Template Method**     | `SvgComposer`（装配顺序）、`SvgShape.paint`（先填充后描边） | 固定骨架，细节由子类/注入决定                      |
+| **Builder**             | `AvatarOptions`                              | 可选参数（sansEnv/part/theme/size/format） |
+| **Simple Factory**      | `Renderers`                                  | 按格式创建渲染器                             |
+| **Singleton**           | `DataTables`                                 | 数据表唯一实例                              |
+| **Immutable Object**    | `AvatarSpec` / `Avatar`                      | 不可变规格与产物                             |
+| **Lazy Initialization** | `Avatar.png()`                               | 首次调用才渲染并缓存                           |
 
 ---
 
@@ -60,46 +165,36 @@ mvn clean package
 
 ---
 
-## 与 JS 实现的一致性验证
+## 验证
 
-`verify/` 目录提供可复现的对照验证流程，确认 Java 输出与官方 `multiavatar.js` 逐字符一致：
+### 1. SVG 与官方 JS 逐字符一致（回归）
 
-1. 用 Node 运行官方 `multiavatar.js` 生成基准：`node verify/gen_benchmark.cjs`
-   （生成 `verify/benchmark.json`，覆盖 basic / sansEnv / ver 三种模式，含空串、中文、长串等用例）
-2. 编译 Java 后生成 Java 侧输出：`java -cp target/classes;target/test-classes com.cary.multiavatar.CompareWithJs target/compare_java.json`
-3. 逐项比对：`python verify/compare_output.py`
-
-> 当前验证结果：**19/19 项全部一致**（basic 12 项、sansEnv 4 项、ver 2 项）。
-
-`MultiavatarData.java` 由 `verify/gen_data.py` 从 `multiavatar.js` 自动提取生成。若上游 JS 数据更新，
-重跑 `python verify/gen_data.py` 即可重新生成数据文件（脚本会同时校验「每个部件的颜色数」与
-「SVG 占位符数」的对应关系）。
-
-注：`CompareWithJs.java` 位于 `src/test/java`，仅用于验证，不是库代码。
-
----
-
-## 目录结构
+`src/test/java/com/cary/multiavatar/CompareWithJs.java` 生成 Java 侧输出，与 Node 运行官方
+`multiavatar.js` 的基准（viewBox 归一化后）逐字符对比：
 
 ```
-java-multiavatar/
-├── pom.xml                       # Maven 配置（JDK 1.8，零第三方依赖）
-├── README.md
-├── src/
-│   ├── main/java/multiavatar/
-│   │   ├── Multiavatar.java      # 核心算法与演示入口（SHA-256、编号映射、颜色替换、拼装）
-│   │   └── MultiavatarData.java  # 自动生成的数据：颜色主题 + SVG 部件模板
-│   └── test/java/multiavatar/
-│       └── CompareWithJs.java    # 与 JS 基准对照的工具
-└── verify/
-    ├── benchmark.json            # JS 官方基准输出（对照用）
-    ├── gen_benchmark.cjs         # 生成基准的 Node 脚本
-    ├── gen_data.py               # 从 multiavatar.js 重新生成 MultiavatarData.java 的脚本
-    └── compare_output.py         # 比对脚本
+node gen_benchmark2.cjs                          # 生成 target/js_benchmark.json（JS 官方基准）
+mvn clean compile test-compile
+java -cp target/classes;target/test-classes com.cary.multiavatar.CompareWithJs target/compare_after_refactor.json
+python regression_svg2.py                       # 逐字符比对（viewBox 归一化）
 ```
+
+> 当前结果：**19/19 项全部一致**（basic 12 项、sansEnv 4 项、ver 2 项）。
+
+### 2. PNG 渲染与浏览器像素级对照
+
+`src/test/java/com/cary/multiavatar/PngCheckTool.java` 批量生成 SVG + PNG（含强制角色/主题用例，
+覆盖数据中全部 4 个带 `opacity` 半透明颜色的 eyes 部件），用无头 Chrome 渲染同 SVG 后逐像素对比：
+
+- 形状差异（二值化后不匹配像素占比）：常规用例 **< 0.2%**，个别复杂头像约 1.3%（差异分布于**边缘抗锯齿**像素，非几何错误）
+- 核心区域平均 RGB 差：**< 6 / 255**（几何与颜色完全一致）
+
+`PartCheckTool.java` 可对 6 个部件逐一渲染对照，用于定位具体部件问题。
+
+> 注：上述验证工具位于 `src/test/java`，仅用于验证，不是库代码。
 
 ---
 
 ## 许可
 
-本项目移植自 Multiavatar，原始作品版权归 Gie Katon（2020-2021），遵循根目录 [`LICENSE`](../LICENSE) 的许可条款。
+本项目移植自 Multiavatar，原始作品版权归 Gie Katon（2020-2021），遵循其开源许可条款。
