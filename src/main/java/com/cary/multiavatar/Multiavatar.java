@@ -92,13 +92,14 @@ public final class Multiavatar {
      * 生成头像对象。
      *
      * @param string  输入字符串
-     * @param options 生成选项（sansEnv/part/theme/size/format）
+     * @param options 生成选项（sansEnv/part/theme/size/svgSize/format）
      */
     public static Avatar avatar(String string, AvatarOptions options) {
         if (options == null) {
             options = AvatarOptions.defaults();
         }
-        String svg = COMPOSER.compose(string, options.sansEnv(), options.part(), options.theme());
+        String svg = COMPOSER.compose(string, options.sansEnv(), options.part(), options.theme(),
+                options.svgWidth(), options.svgHeight());
         return new Avatar(string == null ? "" : string, options, svg);
     }
 

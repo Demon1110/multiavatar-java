@@ -25,7 +25,8 @@ Multiavatar —— 多文化头像生成器（Multicultural Avatar Maker）的**
 2. 取十六进制结果前 **12 位数字**，每 2 位经 `round(47/100 * 两位)` 映射为 0–47 的部件编号。
 3. 编号换算成 16 个初始角色（`00`–`15`）与 3 个颜色主题（`A`/`B`/`C`）。
 4. 角色部件 SVG 模板中的 `#xxx;` 颜色占位符被该主题的颜色**按序替换**（等价复刻 JS 的 `replaceFirst` 语义）。
-5. 按 `env → head → clo → top → eyes → mouth` 顺序拼装成完整 SVG（viewBox `0 0 256 256`）。
+5. 按 `env → head → clo → top → eyes → mouth` 顺序拼装成完整 SVG（viewBox `0 0 256 256`，根元素默认
+   `width="200" height="200"`，可用 `AvatarOptions.svgSize` 调整）。
 
 角色与颜色数据（`MultiavatarData.java`，约 86KB）由脚本从 `multiavatar.js` 自动提取生成，可追溯、可复现。
 
@@ -46,6 +47,7 @@ String svg3 = Multiavatar.multiavatar("test", false, "00", "A"); // 强制角色
 
 三个重载分别对应 JS 的 `multiavatar(string)`、`multiavatar(string, sansEnv)`、
 `multiavatar(string, sansEnv, ver)`。输入为空字符串时返回空串（与 JS 一致）。
+SVG 根元素默认带 `width="200" height="200"`（可用 `.svgSize(w, h)` 自定义，见下）。
 
 ### 作为库调用（PNG）
 
@@ -56,11 +58,12 @@ byte[] png = Multiavatar.toPng("Binx Bond");
 // 指定尺寸
 byte[] png2 = Multiavatar.toPng("Binx Bond", 512);
 
-// 高级选项：去背景 + 强制角色/主题 + 自定义尺寸 + 指定格式
+// 高级选项：去背景 + 强制角色/主题 + 自定义尺寸 + 自定义 SVG 宽高 + 指定格式
 AvatarOptions opts = AvatarOptions.builder()
         .sansEnv(true)
         .part("07").theme("B")
-        .size(128)
+        .size(128)                 // PNG 输出边长（像素）
+        .svgSize(200, 200)         // SVG 根元素宽高（像素，默认 200×200）
         .format(AvatarFormat.PNG)
         .build();
 byte[] png3 = Multiavatar.toPng("Binx Bond", opts);
@@ -140,16 +143,16 @@ src/main/java/com/cary/multiavatar/
 
 ### 用到的设计模式
 
-| 模式                      | 位置                                           | 说明                                   |
-|-------------------------|----------------------------------------------|--------------------------------------|
-| **Facade**              | `Multiavatar`                                | 统一入口，屏蔽底层分层细节                        |
-| **Strategy**            | `AvatarIdHasher` / `AvatarRenderer`          | 哈希算法、输出格式可替换扩展                       |
-| **Template Method**     | `SvgComposer`（装配顺序）、`SvgShape.paint`（先填充后描边） | 固定骨架，细节由子类/注入决定                      |
-| **Builder**             | `AvatarOptions`                              | 可选参数（sansEnv/part/theme/size/format） |
-| **Simple Factory**      | `Renderers`                                  | 按格式创建渲染器                             |
-| **Singleton**           | `DataTables`                                 | 数据表唯一实例                              |
-| **Immutable Object**    | `AvatarSpec` / `Avatar`                      | 不可变规格与产物                             |
-| **Lazy Initialization** | `Avatar.png()`                               | 首次调用才渲染并缓存                           |
+| 模式                      | 位置                                           | 说明                                           |
+|-------------------------|----------------------------------------------|----------------------------------------------|
+| **Facade**              | `Multiavatar`                                | 统一入口，屏蔽底层分层细节                                |
+| **Strategy**            | `AvatarIdHasher` / `AvatarRenderer`          | 哈希算法、输出格式可替换扩展                               |
+| **Template Method**     | `SvgComposer`（装配顺序）、`SvgShape.paint`（先填充后描边） | 固定骨架，细节由子类/注入决定                              |
+| **Builder**             | `AvatarOptions`                              | 可选参数（sansEnv/part/theme/size/svgSize/format） |
+| **Simple Factory**      | `Renderers`                                  | 按格式创建渲染器                                     |
+| **Singleton**           | `DataTables`                                 | 数据表唯一实例                                      |
+| **Immutable Object**    | `AvatarSpec` / `Avatar`                      | 不可变规格与产物                                     |
+| **Lazy Initialization** | `Avatar.png()`                               | 首次调用才渲染并缓存                                   |
 
 ---
 

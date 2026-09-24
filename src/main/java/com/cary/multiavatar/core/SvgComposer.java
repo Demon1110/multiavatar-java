@@ -16,39 +16,60 @@ import com.cary.multiavatar.data.DataTables;
 public final class SvgComposer {
 
     /**
-     * SVG 根开标签（viewBox 取自构建配置）。
+     * 默认 SVG 宽高（像素）。
+     */
+    public static final int DEFAULT_SVG_SIZE = 200;
+    private static final String SVG_END = "</svg>";
+    /**
+     * SVG 根开标签（width/height 与 viewBox 取自构建配置）。
      */
     private static final String SVG_START =
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"%s\">";
-    private static final String SVG_END = "</svg>";
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%d\" height=\"%d\" viewBox=\"%s\">";
 
     private final AvatarIdHasher hasher;
     private final SvgFragmentPainter painter;
     private final String viewBox;
+    private final int svgWidth;
+    private final int svgHeight;
 
     /**
-     * @param hasher  哈希策略（默认 {@link Sha256AvatarIdHasher}）
-     * @param painter 着色器
-     * @param viewBox SVG viewBox，如 "0 0 256 256"
+     * @param hasher    哈希策略（默认 {@link Sha256AvatarIdHasher}）
+     * @param painter   着色器
+     * @param viewBox   SVG viewBox，如 "0 0 256 256"
+     * @param svgWidth  SVG 根元素默认宽度（像素）
+     * @param svgHeight SVG 根元素默认高度（像素）
      */
-    public SvgComposer(AvatarIdHasher hasher, SvgFragmentPainter painter, String viewBox) {
+    public SvgComposer(AvatarIdHasher hasher, SvgFragmentPainter painter, String viewBox,
+                       int svgWidth, int svgHeight) {
         this.hasher = hasher;
         this.painter = painter;
         this.viewBox = viewBox;
+        this.svgWidth = svgWidth;
+        this.svgHeight = svgHeight;
     }
 
     /**
-     * 便捷构造：SHA-256 + 默认数据源 + 指定 viewBox。
+     * 便捷构造：SHA-256 + 默认数据源 + 指定 viewBox，宽高取默认 200×200。
      */
     public static SvgComposer withViewBox(String viewBox) {
         return new SvgComposer(
                 new Sha256AvatarIdHasher(),
                 new SvgFragmentPainter(DataTables.INSTANCE),
-                viewBox);
+                viewBox, DEFAULT_SVG_SIZE, DEFAULT_SVG_SIZE);
     }
 
     /**
-     * 组装完整 SVG。
+     * 便捷构造：SHA-256 + 默认数据源 + 指定 viewBox 与默认宽高。
+     */
+    public static SvgComposer withViewBox(String viewBox, int width, int height) {
+        return new SvgComposer(
+                new Sha256AvatarIdHasher(),
+                new SvgFragmentPainter(DataTables.INSTANCE),
+                viewBox, width, height);
+    }
+
+    /**
+     * 组装完整 SVG（使用本实例默认宽高）。
      *
      * @param input       输入字符串（null 视为空串）
      * @param sansEnv     是否去掉环境部件（背景圆）
@@ -57,6 +78,22 @@ public final class SvgComposer {
      * @return 完整 SVG；输入为空串时返回空串（与 JS 一致）
      */
     public String compose(String input, boolean sansEnv, String forcedPart, String forcedTheme) {
+        return compose(input, sansEnv, forcedPart, forcedTheme, svgWidth, svgHeight);
+    }
+
+    /**
+     * 组装完整 SVG（自定义根元素宽高）。
+     *
+     * @param input       输入字符串（null 视为空串）
+     * @param sansEnv     是否去掉环境部件（背景圆）
+     * @param forcedPart  强制角色编号，null 表示自动
+     * @param forcedTheme 强制主题，null 表示自动
+     * @param width       SVG 根元素宽度（像素）
+     * @param height      SVG 根元素高度（像素）
+     * @return 完整 SVG；输入为空串时返回空串（与 JS 一致）
+     */
+    public String compose(String input, boolean sansEnv, String forcedPart, String forcedTheme,
+                          int width, int height) {
         if (input == null) {
             input = "";
         }
@@ -67,7 +104,7 @@ public final class SvgComposer {
         AvatarSpec spec = AvatarSpec.resolve(input, hasher, forcedPart, forcedTheme);
 
         StringBuilder sb = new StringBuilder(4096);
-        sb.append(String.format(SVG_START, viewBox));
+        sb.append(String.format(SVG_START, width, height, viewBox));
         for (String partName : AvatarSpec.PART_ORDER) {
             if (sansEnv && "env".equals(partName)) {
                 continue; // JS: final['env'] = ''

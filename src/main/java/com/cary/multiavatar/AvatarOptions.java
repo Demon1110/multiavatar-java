@@ -11,6 +11,7 @@ import com.cary.multiavatar.render.AvatarFormat;
  *         .part("00")             // 强制初始角色 00-15（对应 JS 的 ver.part）
  *         .theme("A")             // 强制颜色主题 A/B/C（对应 JS 的 ver.theme）
  *         .size(512)              // PNG 输出边长（像素）
+ *         .svgSize(200, 200)      // SVG 根元素默认宽高（像素）
  *         .format(AvatarFormat.PNG)
  *         .build();
  * </pre>
@@ -22,10 +23,17 @@ public final class AvatarOptions {
      */
     public static final int DEFAULT_SIZE = 256;
 
+    /**
+     * 默认 SVG 根元素宽高（像素）。
+     */
+    public static final int DEFAULT_SVG_SIZE = 200;
+
     private final boolean sansEnv;
     private final String part;
     private final String theme;
     private final int size;
+    private final int svgWidth;
+    private final int svgHeight;
     private final AvatarFormat format;
 
     private AvatarOptions(Builder b) {
@@ -33,6 +41,8 @@ public final class AvatarOptions {
         this.part = b.part;
         this.theme = b.theme;
         this.size = b.size;
+        this.svgWidth = b.svgWidth;
+        this.svgHeight = b.svgHeight;
         this.format = b.format;
     }
 
@@ -72,6 +82,20 @@ public final class AvatarOptions {
         return size;
     }
 
+    /**
+     * SVG 根元素宽度（像素）。
+     */
+    public int svgWidth() {
+        return svgWidth;
+    }
+
+    /**
+     * SVG 根元素高度（像素）。
+     */
+    public int svgHeight() {
+        return svgHeight;
+    }
+
     public AvatarFormat format() {
         return format;
     }
@@ -84,6 +108,8 @@ public final class AvatarOptions {
         private String part;
         private String theme;
         private int size = DEFAULT_SIZE;
+        private int svgWidth = DEFAULT_SVG_SIZE;
+        private int svgHeight = DEFAULT_SVG_SIZE;
         private AvatarFormat format = AvatarFormat.SVG;
 
         private Builder() {
@@ -118,6 +144,15 @@ public final class AvatarOptions {
          */
         public Builder size(int size) {
             this.size = Math.max(1, size);
+            return this;
+        }
+
+        /**
+         * SVG 根元素宽高（像素），仅对 SVG 文本输出生效。
+         */
+        public Builder svgSize(int width, int height) {
+            this.svgWidth = Math.max(1, width);
+            this.svgHeight = Math.max(1, height);
             return this;
         }
 
