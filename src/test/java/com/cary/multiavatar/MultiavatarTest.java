@@ -1,5 +1,10 @@
 package com.cary.multiavatar;
 
+import com.cary.multiavatar.render.AvatarFormat;
+import com.cary.multiavatar.render.AvatarRenderer;
+import com.cary.multiavatar.render.Renderers;
+
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import static com.cary.multiavatar.Multiavatar.multiavatar;
@@ -13,6 +18,11 @@ public class MultiavatarTest {
      * </ul>
      */
     public static void main(String[] args) throws Exception {
+//        testFirst(args);
+        testMultiavatar();
+    }
+
+    private static void testFirst(String[] args) throws IOException {
         if (args.length == 1) {
             System.out.print(multiavatar(args[0]));
             return;
@@ -29,5 +39,17 @@ public class MultiavatarTest {
             }
             System.out.println("已生成: " + f.getAbsolutePath());
         }
+    }
+
+    public static void testMultiavatar() {
+        // 不可变产物：SVG 文本 + 惰性 PNG 渲染
+        Avatar avatar = Multiavatar.avatar("Binx Bond");
+        String svg = avatar.svg();
+        byte[] png = avatar.png();            // 首次调用时渲染并缓存
+        byte[] pngLarge = avatar.png(512);    // 指定尺寸重新渲染
+
+// 直接获取渲染器（策略模式），可自行扩展新格式
+        AvatarRenderer renderer = Renderers.create(AvatarFormat.PNG);
+        byte[] out = renderer.render(avatar.svg(), 256);
     }
 }
