@@ -53,7 +53,7 @@ public final class Multiavatar {
      * <p>viewBox 取 0 0 231 231：与官方 multiavatar.js 完全一致，环境部件（背景圆）的
      * 几何边界恰为 0~231（圆心 115.5、半径 115.5），头像在所有输出中正好充满画布。</p>
      */
-    private static final SvgComposer COMPOSER = SvgComposer.withViewBox("0 0 256 256");
+    private static final SvgComposer COMPOSER = SvgComposer.withViewBox("0 0 231 231");
 
     private Multiavatar() {
     }
@@ -63,33 +63,33 @@ public final class Multiavatar {
     /**
      * 生成头像 SVG（含背景圆）。
      *
-     * @param string 输入字符串（头像标识）
+     * @param input 输入字符串（头像标识）
      * @return SVG 代码；输入为空字符串时返回空串（与 JS 一致）
      */
-    public static String multiavatar(String string) {
-        return COMPOSER.compose(string, false, null, null);
+    public static String multiavatar(String input) {
+        return COMPOSER.compose(input, false, null, null);
     }
 
     /**
      * 生成头像 SVG。
      *
-     * @param string  输入字符串
+     * @param input  输入字符串
      * @param sansEnv 为 true 时输出不含背景圆（环境部件）
      */
-    public static String multiavatar(String string, boolean sansEnv) {
-        return COMPOSER.compose(string, sansEnv, null, null);
+    public static String multiavatar(String input, boolean sansEnv) {
+        return COMPOSER.compose(input, sansEnv, null, null);
     }
 
     /**
      * 生成头像 SVG。
      *
-     * @param string  输入字符串
+     * @param input  输入字符串
      * @param sansEnv 是否去掉背景圆
      * @param part    强制指定初始角色编号 "00"~"15"（对应 JS 的 ver.part）；null 表示自动
      * @param theme   强制指定颜色主题 "A"/"B"/"C"（对应 JS 的 ver.theme）；null 表示自动
      */
-    public static String multiavatar(String string, boolean sansEnv, String part, String theme) {
-        return COMPOSER.compose(string, sansEnv, part, theme);
+    public static String multiavatar(String input, boolean sansEnv, String part, String theme) {
+        return COMPOSER.compose(input, sansEnv, part, theme);
     }
 
     // ==================== 新 API（面向对象） ====================
@@ -97,122 +97,122 @@ public final class Multiavatar {
     /**
      * 生成头像对象（默认选项，SVG 格式）。
      */
-    public static Avatar avatar(String string) {
-        return avatar(string, AvatarOptions.defaults());
+    public static Avatar avatar(String input) {
+        return avatar(input, AvatarOptions.defaults());
     }
 
     /**
      * 生成头像对象。
      *
-     * @param string  输入字符串
+     * @param input  输入字符串
      * @param options 生成选项（sansEnv/part/theme/size/svgSize/format）
      */
-    public static Avatar avatar(String string, AvatarOptions options) {
+    public static Avatar avatar(String input, AvatarOptions options) {
         if (options == null) {
             options = AvatarOptions.defaults();
         }
-        String svg = COMPOSER.compose(string, options.sansEnv(), options.part(), options.theme(),
+        String svg = COMPOSER.compose(input, options.sansEnv(), options.part(), options.theme(),
                 options.svgWidth(), options.svgHeight());
-        return new Avatar(string == null ? "" : string, options, svg);
+        return new Avatar(input == null ? "" : input, options, svg);
     }
 
     /**
      * 直接渲染为 PNG 字节（默认尺寸 256）。
      */
-    public static byte[] toPng(String string) {
-        return toPng(string, AvatarOptions.defaults());
+    public static byte[] toPng(String input) {
+        return toPng(input, AvatarOptions.defaults());
     }
 
     /**
      * 直接渲染为 PNG 字节（指定边长）。
      */
-    public static byte[] toPng(String string, int size) {
-        return toPng(string, AvatarOptions.builder().size(size).build());
+    public static byte[] toPng(String input, int size) {
+        return toPng(input, AvatarOptions.builder().size(size).build());
     }
 
     /**
      * 直接渲染为 PNG 字节。
      */
-    public static byte[] toPng(String string, AvatarOptions options) {
-        Avatar avatar = avatar(string, options);
+    public static byte[] toPng(String input, AvatarOptions options) {
+        Avatar avatar = avatar(input, options);
         return avatar.png(options.size());
     }
 
     /**
      * 光栅化图像（默认尺寸 256，透明背景）；空输入返回 null。
      */
-    public static BufferedImage toImage(String string) {
-        return toImage(string, AvatarOptions.defaults());
+    public static BufferedImage toImage(String input) {
+        return toImage(input, AvatarOptions.defaults());
     }
 
     /**
      * 光栅化图像（指定边长，透明背景）；空输入返回 null。
      */
-    public static BufferedImage toImage(String string, int size) {
-        return toImage(string, AvatarOptions.builder().size(size).build());
+    public static BufferedImage toImage(String input, int size) {
+        return toImage(input, AvatarOptions.builder().size(size).build());
     }
 
     /**
      * 光栅化图像（透明背景）；空输入返回 null。
      */
-    public static BufferedImage toImage(String string, AvatarOptions options) {
-        return avatar(string, options).toImage();
+    public static BufferedImage toImage(String input, AvatarOptions options) {
+        return avatar(input, options).toImage();
     }
 
     /**
      * 直接渲染为 JPEG 字节（默认尺寸 256，白底）。
      */
-    public static byte[] toJpg(String string) {
-        return toJpg(string, AvatarOptions.defaults());
+    public static byte[] toJpg(String input) {
+        return toJpg(input, AvatarOptions.defaults());
     }
 
     /**
      * 直接渲染为 JPEG 字节（指定边长，白底）。
      */
-    public static byte[] toJpg(String string, int size) {
-        return toJpg(string, AvatarOptions.builder().size(size).build());
+    public static byte[] toJpg(String input, int size) {
+        return toJpg(input, AvatarOptions.builder().size(size).build());
     }
 
     /**
      * 直接渲染为 JPEG 字节（白底）。
      */
-    public static byte[] toJpg(String string, AvatarOptions options) {
-        return render(string, AvatarFormat.JPG, options);
+    public static byte[] toJpg(String input, AvatarOptions options) {
+        return render(input, AvatarFormat.JPG, options);
     }
 
     /**
      * 直接渲染为 GIF 动画字节（部件逐帧淡入，无限循环，默认尺寸 256）。
      */
-    public static byte[] toGif(String string) {
-        return toGif(string, AvatarOptions.defaults());
+    public static byte[] toGif(String input) {
+        return toGif(input, AvatarOptions.defaults());
     }
 
     /**
      * 直接渲染为 GIF 动画字节（指定边长）。
      */
-    public static byte[] toGif(String string, int size) {
-        return toGif(string, AvatarOptions.builder().size(size).build());
+    public static byte[] toGif(String input, int size) {
+        return toGif(input, AvatarOptions.builder().size(size).build());
     }
 
     /**
      * 直接渲染为 GIF 动画字节。
      */
-    public static byte[] toGif(String string, AvatarOptions options) {
-        return render(string, AvatarFormat.GIF, options);
+    public static byte[] toGif(String input, AvatarOptions options) {
+        return render(input, AvatarFormat.GIF, options);
     }
 
     /**
      * 打包多尺寸 PNG 为 favicon zip 字节（默认 16/32/48/64/128/256）。
      */
-    public static byte[] toFaviconZip(String string) {
-        return toFaviconZip(string, (int[]) null);
+    public static byte[] toFaviconZip(String input) {
+        return toFaviconZip(input, (int[]) null);
     }
 
     /**
      * 打包多尺寸 PNG 为 favicon zip 字节（自定义尺寸，如 16, 32, 48…）。
      */
-    public static byte[] toFaviconZip(String string, int... sizes) {
-        String svg = multiavatar(string);
+    public static byte[] toFaviconZip(String input, int... sizes) {
+        String svg = multiavatar(input);
         return svg.isEmpty() ? new byte[0] : Favicons.toZip(svg, sizes);
     }
 
@@ -221,8 +221,8 @@ public final class Multiavatar {
      *
      * @param format SVG 返回文本 UTF-8 字节；PNG/JPEG/GIF 返回对应图片字节
      */
-    public static byte[] render(String string, AvatarFormat format, AvatarOptions options) {
-        Avatar avatar = avatar(string, options);
+    public static byte[] render(String input, AvatarFormat format, AvatarOptions options) {
+        Avatar avatar = avatar(input, options);
         if (avatar.isEmpty()) {
             return new byte[0];
         }
@@ -233,15 +233,15 @@ public final class Multiavatar {
     /**
      * 将头像 PNG 写入文件（默认尺寸 256）。
      */
-    public static void writePng(String string, File file) throws IOException {
-        writePng(string, AvatarOptions.defaults(), file);
+    public static void writePng(String input, File file) throws IOException {
+        writePng(input, AvatarOptions.defaults(), file);
     }
 
     /**
      * 将头像 PNG 写入文件。
      */
-    public static void writePng(String string, AvatarOptions options, File file) throws IOException {
-        byte[] png = toPng(string, options);
+    public static void writePng(String input, AvatarOptions options, File file) throws IOException {
+        byte[] png = toPng(input, options);
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(png);
         }
@@ -250,15 +250,15 @@ public final class Multiavatar {
     /**
      * 将 favicon zip 写入文件（默认尺寸）。
      */
-    public static void writeFaviconZip(String string, File file) throws IOException {
-        writeFaviconZip(string, file, (int[]) null);
+    public static void writeFaviconZip(String input, File file) throws IOException {
+        writeFaviconZip(input, file, (int[]) null);
     }
 
     /**
      * 将 favicon zip 写入文件（自定义尺寸）。
      */
-    public static void writeFaviconZip(String string, File file, int... sizes) throws IOException {
-        byte[] zip = toFaviconZip(string, sizes);
+    public static void writeFaviconZip(String input, File file, int... sizes) throws IOException {
+        byte[] zip = toFaviconZip(input, sizes);
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(zip);
         }

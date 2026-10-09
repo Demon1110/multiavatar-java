@@ -46,7 +46,7 @@ public final class PngCheckTool {
         int i = 0;
         for (String[] c : cases) {
             AvatarOptions opts = AvatarOptions.builder()
-                    .part(c[1]).theme(c[2]).build();
+                    .part(c[1]).theme(c[2]).size(512).build();
             String svg = Multiavatar.multiavatar(c[0], false, c[1], c[2]);
             try (Writer w = new OutputStreamWriter(
                     new FileOutputStream(new File(dir, "t" + i + ".svg")), StandardCharsets.UTF_8)) {

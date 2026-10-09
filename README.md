@@ -221,6 +221,16 @@ python regression_svg2.py                       # 逐字符比对（viewBox 一�
 `OutputSmokeCheck.java` 验证新增输出能力：`toImage` 尺寸与空输入、JPG 白底可解码、
 GIF 帧数 = 形状数×2（18 帧）且无限循环（magick 识别 Iterations: 0）、favicon zip 条目数。
 
+### 4. JPG 输出专项验证（JpgFormatCheck）
+
+`src/test/java/com/cary/multiavatar/JpgFormatCheck.java`（14 项断言，零依赖）：
+
+- 基本渲染：字节非空、ImageIO 可解码、默认 256×256、无 alpha 通道、四角白底、文件头魔数 `FFD8FF`
+- 多尺寸（16/128/512）与多输入（含中文）渲染正确；空输入返回空数组
+- 入口等价：`Avatar.jpg()`、`render(..., AvatarFormat.JPG, ...)` 与 `toJpg(...)` 字节一致
+- 与 PNG 形状一致性（JPEG 有损，双指标）：**recall ≥ 0.9999**（JPG 几何完整覆盖 PNG，无缺失/无画错）、
+  **extra 6.1%~7.7% ≤ 10%**（差异仅为压缩振铃导致的边缘扩散）
+
 > 注：上述验证工具位于 `src/test/java`，仅用于验证，不是库代码。
 
 ---
