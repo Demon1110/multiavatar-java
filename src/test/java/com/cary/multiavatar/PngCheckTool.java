@@ -25,7 +25,7 @@ public final class PngCheckTool {
 
         String[] tests = {
                 "Binx Bond", "test", "张三", "user@example.com", "123456789",
-                "Hello World!", "a", "0".repeat(12), "  leading space  ", "AaBbCcDd",
+                "Hello World!", "a", "000000000000", "  leading space  ", "AaBbCcDd",
                 "apple", "banana", "cherry", "data", "engineer", "flower", "github",
                 "hello", "java", "kotlin", "lambda", "maven", "nodejs", "orange",
                 "python", "query", "spring", "tuple", "unique", "vector"

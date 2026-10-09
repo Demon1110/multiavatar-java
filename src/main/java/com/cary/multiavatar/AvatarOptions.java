@@ -11,7 +11,7 @@ import com.cary.multiavatar.render.AvatarFormat;
  *         .part("00")             // 强制初始角色 00-15（对应 JS 的 ver.part）
  *         .theme("A")             // 强制颜色主题 A/B/C（对应 JS 的 ver.theme）
  *         .size(512)              // PNG 输出边长（像素）
- *         .svgSize(200, 200)      // SVG 根元素默认宽高（像素）
+ *         .svgSize(256, 256)      // SVG 根元素默认宽高（像素）
  *         .format(AvatarFormat.PNG)
  *         .build();
  * </pre>
@@ -26,7 +26,7 @@ public final class AvatarOptions {
     /**
      * 默认 SVG 根元素宽高（像素）。
      */
-    public static final int DEFAULT_SVG_SIZE = 200;
+    public static final int DEFAULT_SVG_SIZE = 256;
 
     private final boolean sansEnv;
     private final String part;

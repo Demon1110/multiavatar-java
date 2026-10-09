@@ -48,7 +48,10 @@ import java.nio.charset.StandardCharsets;
 public final class Multiavatar {
 
     /**
-     * 组装器（SHA-256 + 默认数据源），viewBox 与现行实现保持一致。
+     * 组装器（SHA-256 + 默认数据源）。
+     *
+     * <p>viewBox 取 0 0 231 231：与官方 multiavatar.js 完全一致，环境部件（背景圆）的
+     * 几何边界恰为 0~231（圆心 115.5、半径 115.5），头像在所有输出中正好充满画布。</p>
      */
     private static final SvgComposer COMPOSER = SvgComposer.withViewBox("0 0 256 256");
 

@@ -18,7 +18,7 @@ public final class SvgComposer {
     /**
      * 默认 SVG 宽高（像素）。
      */
-    public static final int DEFAULT_SVG_SIZE = 200;
+    public static final int DEFAULT_SVG_SIZE = 256;
     private static final String SVG_END = "</svg>";
     /**
      * SVG 根开标签（width/height 与 viewBox 取自构建配置）。
@@ -49,7 +49,7 @@ public final class SvgComposer {
     }
 
     /**
-     * 便捷构造：SHA-256 + 默认数据源 + 指定 viewBox，宽高取默认 200×200。
+     * 便捷构造：SHA-256 + 默认数据源 + 指定 viewBox，宽高取默认 256×256。
      */
     public static SvgComposer withViewBox(String viewBox) {
         return new SvgComposer(

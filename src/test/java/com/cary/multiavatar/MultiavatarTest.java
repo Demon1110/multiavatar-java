@@ -18,8 +18,8 @@ public class MultiavatarTest {
      * </ul>
      */
     public static void main(String[] args) throws Exception {
-//        testFirst(args);
-        testMultiavatar();
+        testFirst(args);
+//        testMultiavatar();
     }
 
     private static void testFirst(String[] args) throws IOException {

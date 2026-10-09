@@ -29,8 +29,9 @@ Multiavatar —— 多文化头像生成器（Multicultural Avatar Maker）的**
 2. 取十六进制结果前 **12 位数字**，每 2 位经 `round(47/100 * 两位)` 映射为 0–47 的部件编号。
 3. 编号换算成 16 个初始角色（`00`–`15`）与 3 个颜色主题（`A`/`B`/`C`）。
 4. 角色部件 SVG 模板中的 `#xxx;` 颜色占位符被该主题的颜色**按序替换**（等价复刻 JS 的 `replaceFirst` 语义）。
-5. 按 `env → head → clo → top → eyes → mouth` 顺序拼装成完整 SVG（viewBox `0 0 256 256`，根元素默认
-   `width="200" height="200"`，可用 `AvatarOptions.svgSize` 调整）。
+5. 按 `env → head → clo → top → eyes → mouth` 顺序拼装成完整 SVG（viewBox `0 0 231 231`，与官方 JS 一致，
+   环境圆几何边界恰为 0~231，头像正好充满画布；根元素默认
+   `width="256" height="256"`，可用 `AvatarOptions.svgSize` 调整）。
 
 角色与颜色数据（`MultiavatarData.java`，约 86KB）由脚本从 `multiavatar.js` 自动提取生成，可追溯、可复现。
 
@@ -51,7 +52,7 @@ String svg3 = Multiavatar.multiavatar("test", false, "00", "A"); // 强制角色
 
 三个重载分别对应 JS 的 `multiavatar(string)`、`multiavatar(string, sansEnv)`、
 `multiavatar(string, sansEnv, ver)`。输入为空字符串时返回空串（与 JS 一致）。
-SVG 根元素默认带 `width="200" height="200"`（可用 `.svgSize(w, h)` 自定义，见下）。
+SVG 根元素默认带 `width="256" height="256"`（可用 `.svgSize(w, h)` 自定义，见下）。
 
 ### 作为库调用（图片格式）
 
@@ -79,7 +80,7 @@ AvatarOptions opts = AvatarOptions.builder()
         .sansEnv(true)
         .part("07").theme("B")
         .size(128)                 // PNG/JPEG/GIF 输出边长（像素）
-        .svgSize(200, 200)         // SVG 根元素宽高（像素，默认 200×200）
+        .svgSize(256, 256)         // SVG 根元素宽高（像素，默认 256×256）
         .format(AvatarFormat.PNG)
         .build();
 byte[] out = Multiavatar.render("Binx Bond", AvatarFormat.GIF, opts);
@@ -194,13 +195,13 @@ mvn clean package
 ### 1. SVG 与官方 JS 逐字符一致（回归）
 
 `src/test/java/com/cary/multiavatar/CompareWithJs.java` 生成 Java 侧输出，与 Node 运行官方
-`multiavatar.js` 的基准（viewBox 归一化后）逐字符对比：
+`multiavatar.js` 的基准逐字符对比（viewBox 均 `0 0 231 231`，无坐标换算差异）：
 
 ```
 node gen_benchmark2.cjs                          # 生成 target/js_benchmark.json（JS 官方基准）
 mvn clean compile test-compile
 java -cp target/classes;target/test-classes com.cary.multiavatar.CompareWithJs target/compare_after_refactor.json
-python regression_svg2.py                       # 逐字符比对（viewBox 归一化）
+python regression_svg2.py                       # 逐字符比对（viewBox 一致，脚本归一化仅为兼容）
 ```
 
 > 当前结果：**19/19 项全部一致**（basic 12 项、sansEnv 4 项、ver 2 项）。
