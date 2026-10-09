@@ -87,9 +87,7 @@ String uri2 = Multiavatar.avatar("Binx Bond").dataUri(128);
 Avatar a1 = Multiavatar.avatar("Binx Bond");
 Avatar a2 = Multiavatar.avatar("Binx Bond");           // a1 == a2（同一实例）
 int cached = Multiavatar.cacheSize();                  // 当前缓存条目数
-Multiavatar.
-
-clearCache();                              // 清空缓存
+Multiavatar.clearCache();                              // 清空缓存
 
 // 高级选项：去背景 + 强制角色/主题 + 自定义尺寸 + 自定义 SVG 宽高 + 指定格式
 AvatarOptions opts = AvatarOptions.builder()
@@ -102,12 +100,8 @@ AvatarOptions opts = AvatarOptions.builder()
 byte[] out = Multiavatar.render("Binx Bond", AvatarFormat.GIF, opts);
 
 // 直接写入文件
-Multiavatar.
-
-writePng("Binx Bond",opts, new File("avatar.png"));
-        Multiavatar.
-
-writeFaviconZip("Binx Bond",new File("favicon.zip"));
+Multiavatar.writePng("Binx Bond",opts, new File("avatar.png"));
+Multiavatar.writeFaviconZip("Binx Bond",new File("favicon.zip"));
 ```
 
 ### 面向对象的高级用法
@@ -148,8 +142,9 @@ java -cp target/classes com.cary.multiavatar.Multiavatar "Binx Bond"
 ```
 src/main/java/com/cary/multiavatar/
 ├── Multiavatar.java          # 门面（Facade）：兼容旧静态 API + 新 API + 演示 main
-├── Avatar.java               # 不可变产物对象：SVG 缓存 + toImage/png/jpg
-├── AvatarOptions.java        # 构建者（Builder）：sansEnv / part / theme / size / svgSize / format
+├── Avatar.java               # 不可变产物对象：SVG 缓存 + toImage/png/jpg/dataUri
+├── AvatarOptions.java        # 构建者（Builder）：sansEnv / part / theme / size / svgSize / optimizeSvg
+├── AvatarCache.java          # LRU 缓存（全局默认 128，LinkedHashMap accessOrder + removeEldestEntry）
 ├── core/                     # 核心装配流水线
 │   ├── AvatarIdHasher        #   策略接口：字符串 → 哈希
 │   ├── Sha256AvatarIdHasher  #   策略实现：SHA-256 十六进制
@@ -157,7 +152,8 @@ src/main/java/com/cary/multiavatar/
 │   ├── PartKeyResolver       #   编号 → 角色 / 主题 / 部件键
 │   ├── AvatarSpec            #   不可变规格（含强制 part/theme，对应 JS ver）
 │   ├── SvgFragmentPainter    #   占位符颜色替换（replaceFirst 语义）
-│   └── SvgComposer           #   模板方法（Template Method）：固定拼装顺序，部件可注入
+│   ├── SvgComposer           #   模板方法（Template Method）：固定拼装顺序，部件可注入
+│   └── SvgOptimizer          #   SVG 体积优化：坐标取整 / transform 取整 / style 尾分号（第 8 项）
 ├── svg/                      # 领域层：SVG 对象模型 + 解析 + 光栅化前处理
 │   ├── SvgDocument / SvgShape（抽象，paint 模板方法：先填充后描边，帧级 alpha 乘数）
 │   ├── SvgPath / SvgPolygon / SvgLine / SvgRect / SvgColor / SvgStyle
@@ -176,7 +172,8 @@ src/main/java/com/cary/multiavatar/
 │   ├── Favicons              #   多尺寸 PNG → zip 打包
 │   └── Renderers             #   简单工厂（Simple Factory）
 ├── data/
-│   └── DataTables            # 单例（Singleton）：MultiavatarData 只读访问
+│   ├── DataTables            # 单例（Singleton）：MultiavatarData 只读访问
+│   └── MultiavatarData       # 由脚本从 multiavatar.js 提取的 221 形状数据（约 86KB，未手改）
 └── util/
     ├── Hashes                # SHA-256 十六进制
     └── Strings               # 工具方法
@@ -184,16 +181,23 @@ src/main/java/com/cary/multiavatar/
 
 ### 用到的设计模式
 
-| 模式                      | 位置                                           | 说明                                           |
-|-------------------------|----------------------------------------------|----------------------------------------------|
-| **Facade**              | `Multiavatar`                                | 统一入口，屏蔽底层分层细节                                |
-| **Strategy**            | `AvatarIdHasher` / `AvatarRenderer`          | 哈希算法、输出格式可替换扩展                               |
-| **Template Method**     | `SvgComposer`（装配顺序）、`SvgShape.paint`（先填充后描边） | 固定骨架，细节由子类/注入决定                              |
-| **Builder**             | `AvatarOptions`                              | 可选参数（sansEnv/part/theme/size/svgSize/format） |
-| **Simple Factory**      | `Renderers`                                  | 按格式创建渲染器                                     |
-| **Singleton**           | `DataTables`                                 | 数据表唯一实例                                      |
-| **Immutable Object**    | `AvatarSpec` / `Avatar`                      | 不可变规格与产物                                     |
-| **Lazy Initialization** | `Avatar.png()`                               | 首次调用才渲染并缓存                                   |
+| 模式                      | 位置                                           | 说明                                                     |
+|-------------------------|----------------------------------------------|--------------------------------------------------------|
+| **Facade**              | `Multiavatar`                                | 统一入口，屏蔽底层分层细节                                          |
+| **Strategy**            | `AvatarIdHasher` / `AvatarRenderer`          | 哈希算法、输出格式可替换扩展                                         |
+| **Template Method**     | `SvgComposer`（装配顺序）、`SvgShape.paint`（先填充后描边） | 固定骨架，细节由子类/注入决定                                        |
+| **Builder**             | `AvatarOptions`                              | 可选参数（sansEnv/part/theme/size/svgSize/optimizeSvg）      |
+| **Simple Factory**      | `Renderers`                                  | 按格式创建渲染器                                               |
+| **Singleton**           | `DataTables`                                 | 数据表唯一实例                                                |
+| **Immutable Object**    | `AvatarSpec` / `Avatar`                      | 不可变规格与产物                                               |
+| **Lazy Initialization** | `Avatar.png()`                               | 首次调用才渲染并缓存                                             |
+| **LRU Cache**           | `AvatarCache`                                | LinkedHashMap accessOrder + removeEldestEntry，满则淘汰最久未用 |
+
+### 架构图
+
+![Multiavatar Java 架构图](docs/architecture.png)
+
+> 图源 `docs/architecture.html`（纯 HTML/SVG，可用浏览器打开编辑）；图中标注了每个类承担的设计模式角色。
 
 ---
 

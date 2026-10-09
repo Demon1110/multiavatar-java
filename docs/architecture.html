@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <title>Multiavatar Java 架构图</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #ffffff;
+            padding: 20px;
+            width: 1500px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .sub {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 18px;
+        }
+
+        .layer {
+            border: 1.5px solid #cfd8e3;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            background: #f8fafc;
+        }
+
+        .layer-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #37474f;
+            margin-bottom: 10px;
+        }
+
+        .layer-title .pkg {
+            color: #1565c0;
+            font-family: Consolas, monospace;
+        }
+
+        .cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .card {
+            background: #ffffff;
+            border: 1px solid #b9c4d0;
+            border-radius: 8px;
+            padding: 8px 10px;
+            min-width: 120px;
+            position: relative;
+        }
+
+        .card .cls {
+            font-family: Consolas, monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: #0d47a1;
+        }
+
+        .card .note {
+            font-size: 12px;
+            color: #555;
+            margin-top: 3px;
+            line-height: 1.35;
+        }
+
+        .badge {
+            position: absolute;
+            top: 5px;
+            right: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 8px;
+            color: #fff;
+        }
+
+        .b-facade {
+            background: #7e57c2;
+        }
+
+        .b-builder {
+            background: #00897b;
+        }
+
+        .b-lru {
+            background: #ef6c00;
+        }
+
+        .b-immut {
+            background: #455a64;
+        }
+
+        .b-lazy {
+            background: #6d4c41;
+        }
+
+        .b-strategy {
+            background: #1565c0;
+        }
+
+        .b-tmpl {
+            background: #c62828;
+        }
+
+        .b-factory {
+            background: #2e7d32;
+        }
+
+        .b-single {
+            background: #ad1457;
+        }
+
+        .b-impl {
+            background: #0277bd;
+        }
+
+        .arrow {
+            text-align: center;
+            font-size: 16px;
+            color: #546e7a;
+            line-height: 1.35;
+        }
+
+        .arrow small {
+            display: block;
+            font-size: 11px;
+            color: #78909c;
+        }
+
+        .pipeline {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .pipeline .card {
+            min-width: 0;
+        }
+
+        .pipeline .sep {
+            font-size: 18px;
+            color: #546e7a;
+        }
+
+        .iface {
+            border: 1px dashed #1565c0;
+        }
+
+        .group-label {
+            font-size: 12px;
+            color: #1565c0;
+            font-weight: 600;
+            margin: 6px 0 2px;
+        }
+
+        .foot {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Multiavatar（Pure Java）架构 —— 类关系与设计模式</h1>
+<div class="sub">com.cary.multiavatar · JDK 8+ · Maven · 零第三方依赖 · 由 <b>multiavatar.js</b> 移植（数据自动提取，可追溯）
+</div>
+
+<!-- ============ 1. 门面与入口 ============ -->
+<div class="layer">
+    <div class="layer-title">入口与门面层 · <span class="pkg">com.cary.multiavatar</span></div>
+    <div class="cards">
+        <div class="card"><span class="badge b-facade">Facade</span>
+            <div class="cls">Multiavatar</div>
+            <div class="note">统一入口：旧静态 API（multiavatar / writePng / toGif / toFaviconZip）+ 新 API（avatar /
+                toImage / dataUri）+ 演示 main
+            </div>
+        </div>
+        <div class="card"><span class="badge b-builder">Builder</span>
+            <div class="cls">AvatarOptions</div>
+            <div class="note">可选参数：sansEnv · part(角色编号) · theme(主题A/B/C) · size · svgSize · optimizeSvg</div>
+        </div>
+        <div class="card"><span class="badge b-lru">LRU Cache</span>
+            <div class="cls">AvatarCache</div>
+            <div class="note">全局缓存 Avatar（默认容量 128），键含
+                input/sansEnv/part/theme/svgSize/optimizeSvg；LinkedHashMap accessOrder + removeEldestEntry，线程安全
+            </div>
+        </div>
+    </div>
+    <div class="arrow">▼ 构建并缓存产物</div>
+    <div class="cards">
+        <div class="card"><span class="badge b-immut">Immutable</span><span class="badge b-lazy" style="right:74px;">Lazy</span>
+            <div class="cls">Avatar</div>
+            <div class="note">不可变产物：svg() / png() / jpg() / toImage() / dataUri()；PNG/JPG 首次调用才渲染并缓存
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ 2. core 装配流水线 ============ -->
+<div class="layer">
+    <div class="layer-title">核心装配流水线 · <span class="pkg">com.cary.multiavatar.core</span></div>
+    <div class="pipeline">
+        <div class="card"><span class="badge b-strategy">Strategy</span>
+            <div class="cls">AvatarIdHasher</div>
+            <div class="note">接口：字符串 → 哈希</div>
+        </div>
+        <div class="sep">⇩ 实现</div>
+        <div class="card"><span class="badge b-impl">Impl</span>
+            <div class="cls">Sha256AvatarIdHasher</div>
+            <div class="note">SHA-256 十六进制（与 JS 一致）</div>
+        </div>
+        <div class="sep">→</div>
+        <div class="card">
+            <div class="cls">PartNumberMapper</div>
+            <div class="note">哈希 → 0–47 部件编号</div>
+        </div>
+        <div class="sep">→</div>
+        <div class="card">
+            <div class="cls">PartKeyResolver</div>
+            <div class="note">编号 → 角色/主题/部件键</div>
+        </div>
+        <div class="sep">→</div>
+        <div class="card"><span class="badge b-immut">Immutable</span>
+            <div class="cls">AvatarSpec</div>
+            <div class="note">不可变规格（含强制 part/theme，对应 JS ver）</div>
+        </div>
+        <div class="sep">→</div>
+        <div class="card">
+            <div class="cls">SvgFragmentPainter</div>
+            <div class="note">占位符颜色替换（replaceFirst 语义）</div>
+        </div>
+        <div class="sep">→</div>
+        <div class="card"><span class="badge b-tmpl">Template Method</span>
+            <div class="cls">SvgComposer</div>
+            <div class="note">固定拼装顺序 env→head→clo→top→eyes→mouth；hasher/painter 依赖注入；viewBox 恒为 0 0 231
+                231
+            </div>
+        </div>
+        <div class="sep">→</div>
+        <div class="card">
+            <div class="cls">SvgOptimizer</div>
+            <div class="note">体积优化：path 坐标取整（描边 2 位/填充 1 位）、transform/points 取整、style
+                尾分号；负数归零保留负号（-0）防坐标粘连
+            </div>
+        </div>
+    </div>
+    <div class="arrow">▼ 产出 SVG 文本</div>
+</div>
+
+<!-- ============ 3. svg 领域层 ============ -->
+<div class="layer">
+    <div class="layer-title">SVG 领域层 · <span class="pkg">com.cary.multiavatar.svg</span></div>
+    <div class="cards">
+        <div class="card"><span class="badge b-tmpl">Template</span>
+            <div class="cls">SvgShape</div>
+            <div class="note">抽象形状：paint 模板方法（先填充后描边）+ withAlpha（GIF 帧级淡入）</div>
+        </div>
+        <div class="card"><span class="badge b-impl">Impl</span>
+            <div class="cls">SvgPath</div>
+            <div class="note">path d 指令对象</div>
+        </div>
+        <div class="card"><span class="badge b-impl">Impl</span>
+            <div class="cls">SvgPolygon</div>
+            <div class="note">多边形</div>
+        </div>
+        <div class="card"><span class="badge b-impl">Impl</span>
+            <div class="cls">SvgLine</div>
+            <div class="note">线条</div>
+        </div>
+        <div class="card"><span class="badge b-impl">Impl</span>
+            <div class="cls">SvgRect</div>
+            <div class="note">矩形</div>
+        </div>
+        <div class="card">
+            <div class="cls">SvgColor / SvgStyle</div>
+            <div class="note">颜色与样式解析</div>
+        </div>
+        <div class="card">
+            <div class="cls">SvgDocument</div>
+            <div class="note">形状容器</div>
+        </div>
+        <div class="card">
+            <div class="cls">PathDataParser</div>
+            <div class="note">d 全指令解析（含 arc→三次贝塞尔，W3C F.6）</div>
+        </div>
+        <div class="card">
+            <div class="cls">TransformParser</div>
+            <div class="note">transform="matrix(...)" 解析</div>
+        </div>
+        <div class="card">
+            <div class="cls">SvgParser</div>
+            <div class="note">JDK DOM 解析（XXE 防护）</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ 4. render 渲染策略层 ============ -->
+<div class="layer">
+    <div class="layer-title">渲染策略层 · <span class="pkg">com.cary.multiavatar.render</span></div>
+    <div class="group-label">格式策略（Strategy）</div>
+    <div class="pipeline">
+        <div class="card iface"><span class="badge b-strategy">Strategy</span>
+            <div class="cls">AvatarRenderer</div>
+            <div class="note">接口：byte[] render(svg, size)</div>
+        </div>
+        <div class="sep">⇩ 实现</div>
+        <div class="card">
+            <div class="cls">SvgAvatarRenderer</div>
+            <div class="note">SVG 字节</div>
+        </div>
+        <div class="card">
+            <div class="cls">PngAvatarRenderer</div>
+            <div class="note">PNG（透明底）</div>
+        </div>
+        <div class="card">
+            <div class="cls">JpgAvatarRenderer</div>
+            <div class="note">JPEG（白底）</div>
+        </div>
+        <div class="card">
+            <div class="cls">GifAvatarRenderer</div>
+            <div class="note">GIF 部件逐帧淡入</div>
+        </div>
+        <div class="sep">⇩ 创建</div>
+        <div class="card"><span class="badge b-factory">Simple Factory</span>
+            <div class="cls">Renderers</div>
+            <div class="note">AvatarFormat → 渲染器</div>
+        </div>
+        <div class="card"><span class="badge b-impl">Enum</span>
+            <div class="cls">AvatarFormat</div>
+            <div class="note">SVG / PNG / JPG / GIF</div>
+        </div>
+    </div>
+    <div class="group-label">光栅化与编码（零依赖 JDK）</div>
+    <div class="cards">
+        <div class="card">
+            <div class="cls">SvgRasterizer</div>
+            <div class="note">viewBox 等比缩放 + 居中 + 抗锯齿（Java2D）；支持背景色/部分形状</div>
+        </div>
+        <div class="card">
+            <div class="cls">PngWriter / JpgWriter / GifWriter</div>
+            <div class="note">各格式编码器（ImageIO / 自绘 GIF）</div>
+        </div>
+        <div class="card">
+            <div class="cls">Favicons</div>
+            <div class="note">16–256 多尺寸 PNG → zip 打包</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ 5. 数据与工具 ============ -->
+<div class="layer">
+    <div class="layer-title">数据与工具 · <span class="pkg">com.cary.multiavatar.data / util</span></div>
+    <div class="cards">
+        <div class="card"><span class="badge b-single">Singleton</span>
+            <div class="cls">DataTables</div>
+            <div class="note">只读访问数据表的唯一实例</div>
+        </div>
+        <div class="card">
+            <div class="cls">MultiavatarData</div>
+            <div class="note">221 形状 / 48 fill:none 全带描边（脚本从 multiavatar.js 提取，未手改）</div>
+        </div>
+        <div class="card">
+            <div class="cls">Hashes</div>
+            <div class="note">SHA-256 十六进制工具</div>
+        </div>
+        <div class="card">
+            <div class="cls">Strings</div>
+            <div class="note">字符串工具</div>
+        </div>
+    </div>
+</div>
+
+<div class="foot">说明：箭头表达主要调用/数据流，分层色块表达包归属；完整逐字符/像素验证见 README「验证」章节。</div>
+
+</body>
+</html>
