@@ -16,6 +16,16 @@ public final class SvgPath extends SvgShape {
         this.path = path;
     }
 
+    private SvgPath(Path2D path, SvgStyle style, AffineTransform transform, double alpha) {
+        super(style, transform, alpha);
+        this.path = path;
+    }
+
+    @Override
+    public SvgPath withAlpha(double alpha) {
+        return new SvgPath(path, style, transform, alpha);
+    }
+
     @Override
     protected Shape shape() {
         return path;

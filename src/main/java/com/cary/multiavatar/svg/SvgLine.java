@@ -17,6 +17,16 @@ public final class SvgLine extends SvgShape {
         this.line = new Line2D.Double(x1, y1, x2, y2);
     }
 
+    private SvgLine(Line2D line, SvgStyle style, AffineTransform transform, double alpha) {
+        super(style, transform, alpha);
+        this.line = line;
+    }
+
+    @Override
+    public SvgLine withAlpha(double alpha) {
+        return new SvgLine(line, style, transform, alpha);
+    }
+
     @Override
     protected Shape shape() {
         return line;

@@ -3,8 +3,10 @@ package com.cary.multiavatar;
 import com.cary.multiavatar.core.SvgComposer;
 import com.cary.multiavatar.render.AvatarFormat;
 import com.cary.multiavatar.render.AvatarRenderer;
+import com.cary.multiavatar.render.Favicons;
 import com.cary.multiavatar.render.Renderers;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -22,17 +24,25 @@ import java.nio.charset.StandardCharsets;
  * // SVG 文本（旧 API，兼容）
  * String svg = Multiavatar.multiavatar("Binx Bond");
  *
- * // PNG 字节（新 API，纯 JDK 渲染，无第三方依赖）
+ * // PNG / JPEG / GIF（新 API，纯 JDK 渲染，无第三方依赖）
  * byte[] png = Multiavatar.toPng("Binx Bond");
  * byte[] png512 = Multiavatar.toPng("Binx Bond", AvatarOptions.builder().size(512).build());
+ * byte[] jpg = Multiavatar.toJpg("Binx Bond");      // 白底
+ * byte[] gif = Multiavatar.toGif("Binx Bond");      // 部件逐帧淡入动画
  *
- * // 头像对象（SVG + 按需 PNG）
+ * // 头像对象（SVG + 按需图像；toImage 直接返回 BufferedImage 供继续加工）
  * Avatar avatar = Multiavatar.avatar("Binx Bond");
  * String s = avatar.svg();
  * byte[] p = avatar.png(1024);
+ * BufferedImage img = avatar.toImage(256);
+ *
+ * // favicon 多尺寸打包
+ * byte[] zip = Multiavatar.toFaviconZip("Binx Bond");          // 16/32/48/64/128/256
+ * byte[] zip2 = Multiavatar.toFaviconZip("Binx Bond", 32, 64); // 自定义尺寸
  *
  * // 直接写文件
  * Multiavatar.writePng("Binx Bond", new File("avatar.png"));
+ * Multiavatar.writeFaviconZip("Binx Bond", new File("favicon.zip"));
  * </pre>
  */
 public final class Multiavatar {
@@ -126,9 +136,87 @@ public final class Multiavatar {
     }
 
     /**
+     * 光栅化图像（默认尺寸 256，透明背景）；空输入返回 null。
+     */
+    public static BufferedImage toImage(String string) {
+        return toImage(string, AvatarOptions.defaults());
+    }
+
+    /**
+     * 光栅化图像（指定边长，透明背景）；空输入返回 null。
+     */
+    public static BufferedImage toImage(String string, int size) {
+        return toImage(string, AvatarOptions.builder().size(size).build());
+    }
+
+    /**
+     * 光栅化图像（透明背景）；空输入返回 null。
+     */
+    public static BufferedImage toImage(String string, AvatarOptions options) {
+        return avatar(string, options).toImage();
+    }
+
+    /**
+     * 直接渲染为 JPEG 字节（默认尺寸 256，白底）。
+     */
+    public static byte[] toJpg(String string) {
+        return toJpg(string, AvatarOptions.defaults());
+    }
+
+    /**
+     * 直接渲染为 JPEG 字节（指定边长，白底）。
+     */
+    public static byte[] toJpg(String string, int size) {
+        return toJpg(string, AvatarOptions.builder().size(size).build());
+    }
+
+    /**
+     * 直接渲染为 JPEG 字节（白底）。
+     */
+    public static byte[] toJpg(String string, AvatarOptions options) {
+        return render(string, AvatarFormat.JPG, options);
+    }
+
+    /**
+     * 直接渲染为 GIF 动画字节（部件逐帧淡入，无限循环，默认尺寸 256）。
+     */
+    public static byte[] toGif(String string) {
+        return toGif(string, AvatarOptions.defaults());
+    }
+
+    /**
+     * 直接渲染为 GIF 动画字节（指定边长）。
+     */
+    public static byte[] toGif(String string, int size) {
+        return toGif(string, AvatarOptions.builder().size(size).build());
+    }
+
+    /**
+     * 直接渲染为 GIF 动画字节。
+     */
+    public static byte[] toGif(String string, AvatarOptions options) {
+        return render(string, AvatarFormat.GIF, options);
+    }
+
+    /**
+     * 打包多尺寸 PNG 为 favicon zip 字节（默认 16/32/48/64/128/256）。
+     */
+    public static byte[] toFaviconZip(String string) {
+        return toFaviconZip(string, (int[]) null);
+    }
+
+    /**
+     * 打包多尺寸 PNG 为 favicon zip 字节（自定义尺寸，如 16, 32, 48…）。
+     */
+    public static byte[] toFaviconZip(String string, int... sizes) {
+        String svg = multiavatar(string);
+        return svg.isEmpty() ? new byte[0] : Favicons.toZip(svg, sizes);
+    }
+
+    /**
      * 通用渲染入口：按格式与选项渲染。
      *
-     * @param format SVG 返回文本 UTF-8 字节；PNG 返回 PNG 图片字节
+     * @param format SVG 返回文本 UTF-8 字节；PNG/JPEG/GIF 返回对应图片字节
      */
     public static byte[] render(String string, AvatarFormat format, AvatarOptions options) {
         Avatar avatar = avatar(string, options);
@@ -156,12 +244,29 @@ public final class Multiavatar {
         }
     }
 
+    /**
+     * 将 favicon zip 写入文件（默认尺寸）。
+     */
+    public static void writeFaviconZip(String string, File file) throws IOException {
+        writeFaviconZip(string, file, (int[]) null);
+    }
+
+    /**
+     * 将 favicon zip 写入文件（自定义尺寸）。
+     */
+    public static void writeFaviconZip(String string, File file, int... sizes) throws IOException {
+        byte[] zip = toFaviconZip(string, sizes);
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(zip);
+        }
+    }
+
     // ==================== 演示入口 ====================
 
     /**
      * 演示入口：
      * <ul>
-     *   <li>无参数：为若干示例字符串生成 SVG 与 PNG 写入 ./demo/ 目录；</li>
+     *   <li>无参数：为若干示例字符串生成 SVG/PNG（GIF 与 favicon zip 各一个）写入 ./demo/ 目录；</li>
      *   <li>一个参数：把该参数作为输入字符串，将 SVG 打印到标准输出。</li>
      * </ul>
      */
@@ -185,5 +290,12 @@ public final class Multiavatar {
                     new File(dir, "avatar_" + name + ".png"));
             System.out.println("已生成: " + dir.getAbsolutePath() + "\\avatar_" + name + ".{svg,png}");
         }
+
+        // GIF 动画 + favicon 打包演示（取第一个样例）
+        try (FileOutputStream fos = new FileOutputStream(new File(dir, "avatar_Binx_Bond.gif"))) {
+            fos.write(toGif("Binx Bond", 256));
+        }
+        writeFaviconZip("Binx Bond", new File(dir, "avatar_Binx_Bond_favicon.zip"));
+        System.out.println("已生成: " + dir.getAbsolutePath() + "\\avatar_Binx_Bond.{gif,favicon.zip}");
     }
 }

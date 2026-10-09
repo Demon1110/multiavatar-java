@@ -11,11 +11,15 @@ Multiavatar —— 多文化头像生成器（Multicultural Avatar Maker）的**
 
 ## 能力一览
 
-| 能力         | 说明                                                                                         |
-|------------|--------------------------------------------------------------------------------------------|
-| **SVG 输出** | 完整头像 / 去背景（sansEnv）/ 强制角色+主题（ver）三种模式，与官方 JS **逐字符一致**                                     |
-| **PNG 输出** | 基于 JDK 自带 Java2D 光栅化，无需任何第三方 jar；任意尺寸（默认 256×256），透明背景                                     |
-| **零依赖**    | `pom.xml` 的 `<dependencies>` 为空，只用 JDK 标准库（java.awt / javax.imageio / MessageDigest / DOM） |
+| 能力                | 说明                                                                                         |
+|-------------------|--------------------------------------------------------------------------------------------|
+| **SVG 输出**        | 完整头像 / 去背景（sansEnv）/ 强制角色+主题（ver）三种模式，与官方 JS **逐字符一致**                                     |
+| **PNG 输出**        | 基于 JDK 自带 Java2D 光栅化，无需任何第三方 jar；任意尺寸（默认 256×256），透明背景                                     |
+| **JPEG 输出**       | 白底不透明 JPEG（博客/OA 场景），`AvatarFormat.JPG`                                                    |
+| **GIF 动画**        | 部件逐帧淡入（env→head→clo→top→eyes→mouth 依次长出），无限循环，`AvatarFormat.GIF`                           |
+| **BufferedImage** | `Avatar.toImage()` / `Multiavatar.toImage()` 直接返回图像供继续加工（缩放/合成/加水印）                        |
+| **favicon 打包**    | 一次生成 16/32/48/64/128/256 多尺寸 PNG 并打成 zip（零依赖，`java.util.zip`）                              |
+| **零依赖**           | `pom.xml` 的 `<dependencies>` 为空，只用 JDK 标准库（java.awt / javax.imageio / MessageDigest / DOM） |
 
 ---
 
@@ -49,45 +53,59 @@ String svg3 = Multiavatar.multiavatar("test", false, "00", "A"); // 强制角色
 `multiavatar(string, sansEnv, ver)`。输入为空字符串时返回空串（与 JS 一致）。
 SVG 根元素默认带 `width="200" height="200"`（可用 `.svgSize(w, h)` 自定义，见下）。
 
-### 作为库调用（PNG）
+### 作为库调用（图片格式）
 
 ```java
-// 最简单：默认 256×256 透明 PNG（字节数组）
+// PNG：默认 256×256 透明底
 byte[] png = Multiavatar.toPng("Binx Bond");
-
-// 指定尺寸
 byte[] png2 = Multiavatar.toPng("Binx Bond", 512);
+
+// JPEG：白底不透明（博客/OA 场景）
+byte[] jpg = Multiavatar.toJpg("Binx Bond");
+byte[] jpg2 = Multiavatar.toJpg("Binx Bond", 512);
+
+// GIF：部件逐帧淡入动画，无限循环
+byte[] gif = Multiavatar.toGif("Binx Bond");
+
+// BufferedImage：直接返回图像，供继续加工（缩放/合成/加水印）
+BufferedImage img = Multiavatar.toImage("Binx Bond", 256);
+
+// favicon 打包：多尺寸 PNG 的 zip 字节（默认 16/32/48/64/128/256）
+byte[] zip = Multiavatar.toFaviconZip("Binx Bond");
+byte[] zip2 = Multiavatar.toFaviconZip("Binx Bond", 32, 64);
 
 // 高级选项：去背景 + 强制角色/主题 + 自定义尺寸 + 自定义 SVG 宽高 + 指定格式
 AvatarOptions opts = AvatarOptions.builder()
         .sansEnv(true)
         .part("07").theme("B")
-        .size(128)                 // PNG 输出边长（像素）
+        .size(128)                 // PNG/JPEG/GIF 输出边长（像素）
         .svgSize(200, 200)         // SVG 根元素宽高（像素，默认 200×200）
         .format(AvatarFormat.PNG)
         .build();
-byte[] png3 = Multiavatar.toPng("Binx Bond", opts);
+byte[] out = Multiavatar.render("Binx Bond", AvatarFormat.GIF, opts);
 
 // 直接写入文件
 Multiavatar.
 
 writePng("Binx Bond",opts, new File("avatar.png"));
+        Multiavatar.
 
-// 通用渲染入口
-byte[] data = Multiavatar.render("Binx Bond", AvatarFormat.SVG, opts);
+writeFaviconZip("Binx Bond",new File("favicon.zip"));
 ```
 
 ### 面向对象的高级用法
 
 ```java
-// 不可变产物：SVG 文本 + 惰性 PNG 渲染
+// 不可变产物：SVG 文本 + 按需图像
 Avatar avatar = Multiavatar.avatar("Binx Bond");
 String svg = avatar.svg();
-byte[] png = avatar.png();            // 首次调用时渲染并缓存
-byte[] pngLarge = avatar.png(512);    // 指定尺寸重新渲染
+BufferedImage img = avatar.toImage(256);  // 直接拿图
+byte[] png = avatar.png();                // PNG 字节（默认尺寸）
+byte[] pngLarge = avatar.png(512);
+byte[] jpg = avatar.jpg();                // JPEG 字节（白底）
 
 // 直接获取渲染器（策略模式），可自行扩展新格式
-AvatarRenderer renderer = Renderers.create(AvatarFormat.PNG);
+AvatarRenderer renderer = Renderers.create(AvatarFormat.GIF);
 byte[] out = renderer.render(avatar.svg(), 256);
 ```
 
@@ -110,8 +128,8 @@ java -cp target/classes com.cary.multiavatar.Multiavatar "Binx Bond"
 ```
 src/main/java/com/cary/multiavatar/
 ├── Multiavatar.java          # 门面（Facade）：兼容旧静态 API + 新 API + 演示 main
-├── Avatar.java               # 不可变产物对象：SVG 缓存 + 惰性 PNG
-├── AvatarOptions.java        # 构建者（Builder）：sansEnv / part / theme / size / format
+├── Avatar.java               # 不可变产物对象：SVG 缓存 + toImage/png/jpg
+├── AvatarOptions.java        # 构建者（Builder）：sansEnv / part / theme / size / svgSize / format
 ├── core/                     # 核心装配流水线
 │   ├── AvatarIdHasher        #   策略接口：字符串 → 哈希
 │   ├── Sha256AvatarIdHasher  #   策略实现：SHA-256 十六进制
@@ -121,18 +139,21 @@ src/main/java/com/cary/multiavatar/
 │   ├── SvgFragmentPainter    #   占位符颜色替换（replaceFirst 语义）
 │   └── SvgComposer           #   模板方法（Template Method）：固定拼装顺序，部件可注入
 ├── svg/                      # 领域层：SVG 对象模型 + 解析 + 光栅化前处理
-│   ├── SvgDocument / SvgShape（抽象，paint 模板方法：先填充后描边）
+│   ├── SvgDocument / SvgShape（抽象，paint 模板方法：先填充后描边，帧级 alpha 乘数）
 │   ├── SvgPath / SvgPolygon / SvgLine / SvgRect / SvgColor / SvgStyle
 │   ├── PathDataParser        #   path d 全指令解析（含 arc→三次贝塞尔，W3C F.6）
 │   ├── TransformParser       #   transform="matrix(...)" 解析
 │   └── SvgParser             #   JDK DOM 解析（XXE 防护）
 ├── render/                   # 渲染策略层（Strategy）
-│   ├── AvatarFormat          #   枚举：SVG / PNG
+│   ├── AvatarFormat          #   枚举：SVG / PNG / JPG / GIF
 │   ├── AvatarRenderer        #   渲染器接口
 │   ├── SvgAvatarRenderer     #   SVG 渲染器（字节输出）
 │   ├── PngAvatarRenderer     #   PNG 渲染器（Java2D 光栅化 + ImageIO 编码）
-│   ├── SvgRasterizer         #   viewBox 等比缩放 + 居中 + 抗锯齿
-│   ├── PngWriter             #   PNG 编码
+│   ├── JpgAvatarRenderer     #   JPEG 渲染器（白底）
+│   ├── GifAvatarRenderer     #   GIF 渲染器（部件逐帧淡入动画）
+│   ├── SvgRasterizer         #   viewBox 等比缩放 + 居中 + 抗锯齿（支持背景色/部分形状）
+│   ├── PngWriter / JpgWriter / GifWriter  #   各格式编码器
+│   ├── Favicons              #   多尺寸 PNG → zip 打包
 │   └── Renderers             #   简单工厂（Simple Factory）
 ├── data/
 │   └── DataTables            # 单例（Singleton）：MultiavatarData 只读访问
@@ -193,6 +214,11 @@ python regression_svg2.py                       # 逐字符比对（viewBox 归�
 - 核心区域平均 RGB 差：**< 2.1 / 255**（几何与颜色完全一致）
 
 `PartCheckTool.java` 可对 6 个部件逐一渲染对照，用于定位具体部件问题。
+
+### 3. 输出层冒烟验证（toImage / JPG / GIF / favicon）
+
+`OutputSmokeCheck.java` 验证新增输出能力：`toImage` 尺寸与空输入、JPG 白底可解码、
+GIF 帧数 = 形状数×2（18 帧）且无限循环（magick 识别 Iterations: 0）、favicon zip 条目数。
 
 > 注：上述验证工具位于 `src/test/java`，仅用于验证，不是库代码。
 

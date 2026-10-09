@@ -6,8 +6,9 @@ import java.awt.geom.AffineTransform;
 /**
  * SVG 形状基类（组合模式叶子节点）。
  *
- * <p>封装样式与可选变换，以模板方法统一「填充 + 描边 + 不透明度」的绘制流程，
- * 具体几何由子类 {@link #shape()} 提供（path/polygon/line/rect）。</p>
+ * <p>封装样式、可选变换与帧级不透明度，以模板方法统一「填充 + 描边 + 不透明度」的绘制流程，
+ * 具体几何由子类 {@link #shape()} 提供（path/polygon/line/rect）。
+ * 帧级不透明度（{@link #alpha()}）与元素自身 opacity 相乘，用于动画帧淡入（如 GIF 逐部件渐显）。</p>
  */
 public abstract class SvgShape {
 
@@ -18,10 +19,16 @@ public abstract class SvgShape {
 
     protected final SvgStyle style;
     protected final AffineTransform transform;
+    private final double alpha;
 
     protected SvgShape(SvgStyle style, AffineTransform transform) {
+        this(style, transform, 1.0);
+    }
+
+    protected SvgShape(SvgStyle style, AffineTransform transform, double alpha) {
         this.style = style;
         this.transform = transform;
+        this.alpha = alpha;
     }
 
     public SvgStyle style() {
@@ -31,6 +38,19 @@ public abstract class SvgShape {
     public AffineTransform transform() {
         return transform;
     }
+
+    /**
+     * 帧级不透明度乘数（1.0 = 正常显示）。
+     */
+    public double alpha() {
+        return alpha;
+    }
+
+    /**
+     * 返回一个应用了帧级不透明度 {@code alpha}（0-1）的同几何副本（不可变）。
+     * 实际显示透明度 = 元素自身 opacity × {@code alpha}。
+     */
+    public abstract SvgShape withAlpha(double alpha);
 
     /**
      * 绘制本形状（模板方法）：先填充后描边，应用元素级不透明度与矩阵变换。
@@ -46,8 +66,9 @@ public abstract class SvgShape {
             if (transform != null) {
                 g2.transform(transform);
             }
-            if (style.opacity() < 1.0) {
-                g2.setComposite(AlphaComposite.SrcOver.derive((float) style.opacity()));
+            double opacity = style.opacity() * alpha;
+            if (opacity < 1.0) {
+                g2.setComposite(AlphaComposite.SrcOver.derive((float) opacity));
             }
 
             // SVG 语义：先填充，再描边

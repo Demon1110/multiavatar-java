@@ -16,6 +16,16 @@ public final class SvgPolygon extends SvgShape {
         this.path = path;
     }
 
+    private SvgPolygon(Path2D path, SvgStyle style, AffineTransform transform, double alpha) {
+        super(style, transform, alpha);
+        this.path = path;
+    }
+
+    @Override
+    public SvgPolygon withAlpha(double alpha) {
+        return new SvgPolygon(path, style, transform, alpha);
+    }
+
     @Override
     protected Shape shape() {
         return path;

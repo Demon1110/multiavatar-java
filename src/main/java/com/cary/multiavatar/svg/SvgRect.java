@@ -19,6 +19,16 @@ public final class SvgRect extends SvgShape {
         this.rect = new RoundRectangle2D.Double(x, y, width, height, arc * 2, arc * 2);
     }
 
+    private SvgRect(RoundRectangle2D rect, SvgStyle style, AffineTransform transform, double alpha) {
+        super(style, transform, alpha);
+        this.rect = rect;
+    }
+
+    @Override
+    public SvgRect withAlpha(double alpha) {
+        return new SvgRect(rect, style, transform, alpha);
+    }
+
     @Override
     protected Shape shape() {
         return rect;

@@ -9,7 +9,15 @@ public enum AvatarFormat {
      */
     SVG,
     /**
-     * PNG 图片字节。
+     * PNG 图片字节（透明背景）。
      */
-    PNG
+    PNG,
+    /**
+     * JPEG 图片字节（白色背景，不支持透明）。
+     */
+    JPG,
+    /**
+     * GIF 动画字节：部件逐帧淡入，无限循环。
+     */
+    GIF
 }

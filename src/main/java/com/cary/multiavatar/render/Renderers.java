@@ -19,6 +19,10 @@ public final class Renderers {
                 return new SvgAvatarRenderer();
             case PNG:
                 return new PngAvatarRenderer();
+            case JPG:
+                return new JpgAvatarRenderer();
+            case GIF:
+                return new GifAvatarRenderer();
             default:
                 throw new IllegalArgumentException("不支持的格式: " + format);
         }
