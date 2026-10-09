@@ -2,8 +2,11 @@ package com.cary.multiavatar;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.util.Base64;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -73,11 +76,21 @@ public final class OutputSmokeCheck {
         }
         check(entries2 == 2, "自定义 favicon zip 应有 2 个条目，实际 " + entries2);
 
-        System.out.println("OK: 输出层 1-4 冒烟验证全部通过");
+        // 5. data URI：前缀、Base64 可解码回 PNG 且尺寸一致；空输入返回空串
+        String uri = Multiavatar.toDataUri("Binx Bond", 128);
+        check(uri.startsWith("data:image/png;base64,"), "data URI 前缀正确");
+        byte[] uriBytes = Base64.getDecoder().decode(
+                uri.substring("data:image/png;base64,".length()));
+        BufferedImage uriImg = ImageIO.read(new ByteArrayInputStream(uriBytes));
+        check(uriImg != null && uriImg.getWidth() == 128, "data URI 可解码为 128 PNG");
+        check(uri.equals(Multiavatar.avatar("Binx Bond").dataUri(128)), "Avatar.dataUri() 与 toDataUri 一致");
+        check(Multiavatar.toDataUri("").isEmpty(), "data URI 空输入返回空串");
+
+        System.out.println("OK: 输出层 1-5 冒烟验证全部通过");
     }
 
     private static void write(File f, byte[] b) throws Exception {
-        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(f)) {
+        try (FileOutputStream fos = new FileOutputStream(f)) {
             fos.write(b);
         }
     }

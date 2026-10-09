@@ -3,6 +3,7 @@ package com.cary.multiavatar;
 import com.cary.multiavatar.render.*;
 
 import java.awt.image.BufferedImage;
+import java.util.Base64;
 
 /**
  * 头像产物（不可变）：封装输入字符串对应的 SVG 文本，并提供图像渲染能力。
@@ -102,5 +103,24 @@ public final class Avatar {
         }
         AvatarRenderer renderer = Renderers.create(AvatarFormat.JPG);
         return renderer.render(svg, size);
+    }
+
+    /**
+     * PNG data URI（默认尺寸 256）：{@code data:image/png;base64,...}，
+     * 可直接嵌入 {@code <img src>} / CSS。空输入返回空串。
+     */
+    public String dataUri() {
+        return dataUri(options.size());
+    }
+
+    /**
+     * PNG data URI（指定边长）；空输入返回空串。
+     */
+    public String dataUri(int size) {
+        byte[] png = png(size);
+        if (png.length == 0) {
+            return "";
+        }
+        return "data:image/png;base64," + Base64.getEncoder().encodeToString(png);
     }
 }

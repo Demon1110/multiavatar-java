@@ -1,17 +1,17 @@
 package com.cary.multiavatar;
 
-import com.cary.multiavatar.render.AvatarFormat;
-
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Arrays;
 
 /**
  * JPG 输出专项验证（零依赖，main + 断言；任一断言失败即抛异常并退出码非 0）。
  *
  * <p>覆盖：可解码/尺寸/白底/无 alpha/角像素、多尺寸、多输入、空输入、
- * {@link Avatar#jpg()} 与通用 {@link Multiavatar#render(..., AvatarFormat.JPG, ...)} 入口、
+ * {@link Avatar#jpg()} 与通用 {@link Multiavatar#toJpg(input)} 入口、
  * 以及与 PNG（透明底铺白）的形状一致性（JPEG 有损，形状差异阈值放宽）。</p>
  *
  * <p>运行：<pre>java -cp target/classes;target/test-classes com.cary.multiavatar.JpgFormatCheck</pre></p>
@@ -46,14 +46,14 @@ public final class JpgFormatCheck {
         }
 
         // 5. 多输入
-        java.io.File dir = new java.io.File("demo");
+        File dir = new File("demo");
         dir.mkdirs();
         for (String sample : SAMPLES) {
             byte[] bytes = Multiavatar.toJpg(sample);
             BufferedImage s = decode(bytes);
             //把BufferedImage转为jpg图片
-            java.io.File f = new java.io.File(dir, "avatar_" + sample + ".jpg");
-            try (FileOutputStream os = new java.io.FileOutputStream(f)) {
+            File f = new File(dir, "avatar_" + sample + ".jpg");
+            try (FileOutputStream os = new FileOutputStream(f)) {
                 os.write(bytes);
             }
             System.out.println(f.getAbsolutePath());
@@ -65,12 +65,12 @@ public final class JpgFormatCheck {
 
         // 7. Avatar.jpg() 与 toJpg 等价（字节一致）
         Avatar avatar = Multiavatar.avatar("Binx Bond");
-        check(java.util.Arrays.equals(avatar.jpg(), jpg), "Avatar.jpg() 与 toJpg 字节一致");
+        check(Arrays.equals(avatar.jpg(), jpg), "Avatar.jpg() 与 toJpg 字节一致");
 
         // 8. render(JPG) 通用入口与 toJpg 等价
         byte[] viaRender = Multiavatar.render("Binx Bond", com.cary.multiavatar.render.AvatarFormat.JPG,
                 AvatarOptions.defaults());
-        check(java.util.Arrays.equals(viaRender, jpg), "render(JPG) 与 toJpg 字节一致");
+        check(Arrays.equals(viaRender, jpg), "render(JPG) 与 toJpg 字节一致");
 
         // 9. 与 PNG 形状一致性：JPG（白底）与 PNG 铺白后二值化形状对比
         for (String sample : SAMPLES) {

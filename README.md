@@ -19,6 +19,9 @@ Multiavatar —— 多文化头像生成器（Multicultural Avatar Maker）的**
 | **GIF 动画**        | 部件逐帧淡入（env→head→clo→top→eyes→mouth 依次长出），无限循环，`AvatarFormat.GIF`                           |
 | **BufferedImage** | `Avatar.toImage()` / `Multiavatar.toImage()` 直接返回图像供继续加工（缩放/合成/加水印）                        |
 | **favicon 打包**    | 一次生成 16/32/48/64/128/256 多尺寸 PNG 并打成 zip（零依赖，`java.util.zip`）                              |
+| **PNG data URI**  | `toDataUri()` / `Avatar.dataUri()` 返回 `data:image/png;base64,...`，`<img src>` 直接内嵌，免上传     |
+| **LRU 缓存**        | 全局 LRU（默认容量 128）：同参数输入重复生成复用已组装 `Avatar`，满则淘汰最久未使用（`LinkedHashMap` 实现，零依赖）                 |
+| **批量预览图**         | 演示入口自动拼接 N 输入横排预览图 `demo/preview_grid.png`（兼作批量渲染视觉回归图）                                    |
 | **零依赖**           | `pom.xml` 的 `<dependencies>` 为空，只用 JDK 标准库（java.awt / javax.imageio / MessageDigest / DOM） |
 
 ---
@@ -74,6 +77,18 @@ BufferedImage img = Multiavatar.toImage("Binx Bond", 256);
 // favicon 打包：多尺寸 PNG 的 zip 字节（默认 16/32/48/64/128/256）
 byte[] zip = Multiavatar.toFaviconZip("Binx Bond");
 byte[] zip2 = Multiavatar.toFaviconZip("Binx Bond", 32, 64);
+
+// PNG data URI：<img src="..."> / CSS background 直接内嵌，免上传
+String uri = Multiavatar.toDataUri("Binx Bond");       // data:image/png;base64,...
+String uri2 = Multiavatar.avatar("Binx Bond").dataUri(128);
+
+// 全局 LRU 缓存：同参数输入重复生成直接复用（容量 128，满则淘汰最久未使用）
+Avatar a1 = Multiavatar.avatar("Binx Bond");
+Avatar a2 = Multiavatar.avatar("Binx Bond");           // a1 == a2（同一实例）
+int cached = Multiavatar.cacheSize();                  // 当前缓存条目数
+Multiavatar.
+
+clearCache();                              // 清空缓存
 
 // 高级选项：去背景 + 强制角色/主题 + 自定义尺寸 + 自定义 SVG 宽高 + 指定格式
 AvatarOptions opts = AvatarOptions.builder()
@@ -216,10 +231,16 @@ python regression_svg2.py                       # 逐字符比对（viewBox 一�
 
 `PartCheckTool.java` 可对 6 个部件逐一渲染对照，用于定位具体部件问题。
 
-### 3. 输出层冒烟验证（toImage / JPG / GIF / favicon）
+### 3. 输出层冒烟验证（toImage / JPG / GIF / favicon / data URI）
 
 `OutputSmokeCheck.java` 验证新增输出能力：`toImage` 尺寸与空输入、JPG 白底可解码、
-GIF 帧数 = 形状数×2（18 帧）且无限循环（magick 识别 Iterations: 0）、favicon zip 条目数。
+GIF 帧数 = 形状数×2（18 帧）且无限循环（magick 识别 Iterations: 0）、favicon zip 条目数、
+data URI 前缀与 Base64 可解码回 PNG 且与 `Avatar.dataUri()` 一致。
+
+### 3b. LRU 缓存行为验证（CacheCheck）
+
+`CacheCheck.java` 验证：同参数命中（同一实例）、`size` 不入键而 `part/theme/sansEnv/svgSize` 入键、
+容量 2 时最久未使用项被淘汰、`clearCache()` 后重新组装。
 
 ### 4. JPG 输出专项验证（JpgFormatCheck）
 

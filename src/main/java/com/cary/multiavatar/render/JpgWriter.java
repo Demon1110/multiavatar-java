@@ -1,6 +1,8 @@
 package com.cary.multiavatar.render;
 
 import javax.imageio.ImageIO;
+
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -9,7 +11,7 @@ import java.io.IOException;
  * JPEG 编码器：BufferedImage → JPEG 字节（JDK ImageIO，零依赖）。
  *
  * <p>JPEG 不支持透明通道，带 alpha 的图像会先铺到白底再转 RGB 编码；
- * 若要控制底色，请先在光栅化时指定背景色（{@link SvgRasterizer#rasterize(String, int, java.awt.Color)}）。</p>
+ * 若要控制底色，请先在光栅化时指定背景色（{@link SvgRasterizer#rasterize(String, int, Color)}）。</p>
  */
 public final class JpgWriter {
 
@@ -23,9 +25,9 @@ public final class JpgWriter {
         BufferedImage rgb = image;
         if (image.getColorModel().hasAlpha()) {
             rgb = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
-            java.awt.Graphics2D g = rgb.createGraphics();
+            Graphics2D g = rgb.createGraphics();
             try {
-                g.setColor(java.awt.Color.WHITE);
+                g.setColor(Color.WHITE);
                 g.fillRect(0, 0, rgb.getWidth(), rgb.getHeight());
                 g.drawImage(image, 0, 0, null);
             } finally {

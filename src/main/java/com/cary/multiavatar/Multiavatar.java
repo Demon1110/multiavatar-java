@@ -1,15 +1,11 @@
 package com.cary.multiavatar;
 
 import com.cary.multiavatar.core.SvgComposer;
-import com.cary.multiavatar.render.AvatarFormat;
-import com.cary.multiavatar.render.AvatarRenderer;
-import com.cary.multiavatar.render.Favicons;
-import com.cary.multiavatar.render.Renderers;
+import com.cary.multiavatar.render.*;
 
+import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -55,6 +51,12 @@ public final class Multiavatar {
      */
     private static final SvgComposer COMPOSER = SvgComposer.withViewBox("0 0 231 231");
 
+    /**
+     * 全局 LRU 缓存：同参数输入重复生成时复用已组装的 {@link Avatar}。
+     * 键覆盖 input/sansEnv/part/theme/svgWidth/svgHeight；容量满自动淘汰最久未使用项。
+     */
+    private static final AvatarCache CACHE = AvatarCache.defaults();
+
     private Multiavatar() {
     }
 
@@ -95,14 +97,14 @@ public final class Multiavatar {
     // ==================== 新 API（面向对象） ====================
 
     /**
-     * 生成头像对象（默认选项，SVG 格式）。
+     * 生成头像对象（默认选项，SVG 格式）。同参数重复调用命中全局 LRU 缓存。
      */
     public static Avatar avatar(String input) {
         return avatar(input, AvatarOptions.defaults());
     }
 
     /**
-     * 生成头像对象。
+     * 生成头像对象（经全局 LRU 缓存）。
      *
      * @param input  输入字符串
      * @param options 生成选项（sansEnv/part/theme/size/svgSize/format）
@@ -111,9 +113,32 @@ public final class Multiavatar {
         if (options == null) {
             options = AvatarOptions.defaults();
         }
-        String svg = COMPOSER.compose(input, options.sansEnv(), options.part(), options.theme(),
+        String norm = input == null ? "" : input;
+        AvatarCache.Key key = new AvatarCache.Key(norm, options.sansEnv(), options.part(),
+                options.theme(), options.svgWidth(), options.svgHeight());
+        Avatar cached = CACHE.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        String svg = COMPOSER.compose(norm, options.sansEnv(), options.part(), options.theme(),
                 options.svgWidth(), options.svgHeight());
-        return new Avatar(input == null ? "" : input, options, svg);
+        Avatar avatar = new Avatar(norm, options, svg);
+        CACHE.put(key, avatar);
+        return avatar;
+    }
+
+    /**
+     * 全局 LRU 缓存当前条目数。
+     */
+    public static int cacheSize() {
+        return CACHE.size();
+    }
+
+    /**
+     * 清空全局 LRU 缓存。
+     */
+    public static void clearCache() {
+        CACHE.clear();
     }
 
     /**
@@ -157,6 +182,28 @@ public final class Multiavatar {
      */
     public static BufferedImage toImage(String input, AvatarOptions options) {
         return avatar(input, options).toImage();
+    }
+
+    /**
+     * PNG data URI（默认尺寸 256）：{@code data:image/png;base64,...}，可直接用于
+     * {@code <img src>} / CSS background，免上传即内嵌展示。空输入返回空串。
+     */
+    public static String toDataUri(String input) {
+        return toDataUri(input, AvatarOptions.defaults());
+    }
+
+    /**
+     * PNG data URI（指定边长）；空输入返回空串。
+     */
+    public static String toDataUri(String input, int size) {
+        return toDataUri(input, AvatarOptions.builder().size(size).build());
+    }
+
+    /**
+     * PNG data URI；空输入返回空串。
+     */
+    public static String toDataUri(String input, AvatarOptions options) {
+        return avatar(input, options).dataUri();
     }
 
     /**
@@ -269,7 +316,8 @@ public final class Multiavatar {
     /**
      * 演示入口：
      * <ul>
-     *   <li>无参数：为若干示例字符串生成 SVG/PNG（GIF 与 favicon zip 各一个）写入 ./demo/ 目录；</li>
+     *   <li>无参数：为若干示例字符串生成 SVG/PNG（GIF 与 favicon zip 各一个）写入 ./demo/ 目录，
+     *       并拼接一张横排预览图 demo/preview_grid.png（兼作批量渲染的视觉回归图）；</li>
      *   <li>一个参数：把该参数作为输入字符串，将 SVG 打印到标准输出。</li>
      * </ul>
      */
@@ -282,17 +330,38 @@ public final class Multiavatar {
         String[] samples = {"Binx Bond", "test", "张三", "user@example.com", "123456789"};
         File dir = new File("demo");
         dir.mkdirs();
-        for (String s : samples) {
+        int size = 256;
+        BufferedImage[] imgs = new BufferedImage[samples.length];
+        for (int i = 0; i < samples.length; i++) {
+            String s = samples[i];
             String name = s.replaceAll("[^A-Za-z0-9_-]", "_");
-            try (java.io.Writer w = new java.io.OutputStreamWriter(
-                    new java.io.FileOutputStream(new File(dir, "avatar_" + name + ".svg")),
+            try (Writer w = new OutputStreamWriter(
+                    new FileOutputStream(new File(dir, "avatar_" + name + ".svg")),
                     StandardCharsets.UTF_8)) {
                 w.write(multiavatar(s));
             }
-            writePng(s, AvatarOptions.builder().size(256).build(),
+            writePng(s, AvatarOptions.builder().size(size).build(),
                     new File(dir, "avatar_" + name + ".png"));
+            imgs[i] = toImage(s, size);
             System.out.println("已生成: " + dir.getAbsolutePath() + "\\avatar_" + name + ".{svg,png}");
         }
+
+        // 横排预览图：N 张 256×256 依次拼接为一张（透明底，兼作批量回归图）
+        BufferedImage grid = new BufferedImage(size * samples.length, size,
+                BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = grid.createGraphics();
+        g.setColor(new Color(0, 0, 0, 0));
+        g.fillRect(0, 0, grid.getWidth(), grid.getHeight());
+        for (int i = 0; i < imgs.length; i++) {
+            if (imgs[i] != null) {
+                g.drawImage(imgs[i], i * size, 0, null);
+            }
+        }
+        g.dispose();
+        try (FileOutputStream fos = new FileOutputStream(new File(dir, "preview_grid.png"))) {
+            fos.write(PngWriter.toPng(grid));
+        }
+        System.out.println("已生成: " + dir.getAbsolutePath() + "\\preview_grid.png");
 
         // GIF 动画 + favicon 打包演示（取第一个样例）
         try (FileOutputStream fos = new FileOutputStream(new File(dir, "avatar_Binx_Bond.gif"))) {

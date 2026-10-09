@@ -4,7 +4,7 @@ import com.cary.multiavatar.render.AvatarFormat;
 import com.cary.multiavatar.render.AvatarRenderer;
 import com.cary.multiavatar.render.Renderers;
 
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 
 import static com.cary.multiavatar.Multiavatar.multiavatar;
@@ -29,12 +29,12 @@ public class MultiavatarTest {
         }
 
         String[] samples = {"Binx Bond", "test", "张三", "user@example.com", "123456789"};
-        java.io.File dir = new java.io.File("demo");
+        File dir = new File("demo");
         dir.mkdirs();
         for (String s : samples) {
             String name = s.replaceAll("[^A-Za-z0-9_-]", "_");
-            java.io.File f = new java.io.File(dir, "avatar_" + name + ".svg");
-            try (java.io.Writer w = new java.io.OutputStreamWriter(new java.io.FileOutputStream(f), StandardCharsets.UTF_8)) {
+            File f = new File(dir, "avatar_" + name + ".svg");
+            try (Writer w = new OutputStreamWriter(new FileOutputStream(f), StandardCharsets.UTF_8)) {
                 w.write(multiavatar(s));
             }
             System.out.println("已生成: " + f.getAbsolutePath());

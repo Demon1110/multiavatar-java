@@ -1,6 +1,11 @@
 package com.cary.multiavatar;
 
 import com.cary.multiavatar.core.AvatarSpec;
+import com.cary.multiavatar.core.Sha256AvatarIdHasher;
+import com.cary.multiavatar.core.SvgFragmentPainter;
+import com.cary.multiavatar.data.DataTables;
+import com.cary.multiavatar.render.AvatarFormat;
+import com.cary.multiavatar.render.Renderers;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -37,12 +42,11 @@ public final class PartCheckTool {
             if (svg == null) {
                 continue;
             }
-            try (Writer w = new OutputStreamWriter(
-                    new FileOutputStream(new File(dir, "part_" + p + ".svg")), StandardCharsets.UTF_8)) {
+            try (Writer w = new OutputStreamWriter(new FileOutputStream(new File(dir,
+                    "part_" + p + ".svg")), StandardCharsets.UTF_8)) {
                 w.write(svg);
             }
-            byte[] png = com.cary.multiavatar.render.Renderers
-                    .create(com.cary.multiavatar.render.AvatarFormat.PNG)
+            byte[] png = Renderers.create(AvatarFormat.PNG)
                     .render(svg, 256);
             try (FileOutputStream fos = new FileOutputStream(new File(dir, "part_" + p + ".png"))) {
                 fos.write(png);
@@ -55,12 +59,9 @@ public final class PartCheckTool {
      * 生成只含单个部件的 SVG。
      */
     private static String partSvg(String input, String partName) {
-        AvatarSpec spec = AvatarSpec.resolve(input,
-                new com.cary.multiavatar.core.Sha256AvatarIdHasher(), null, null);
-        String svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\">"
-                + new com.cary.multiavatar.core.SvgFragmentPainter(
-                com.cary.multiavatar.data.DataTables.INSTANCE)
-                .paint(partName, spec.partVOf(partName), spec.themeOf(partName))
+        AvatarSpec spec = AvatarSpec.resolve(input, new Sha256AvatarIdHasher(), null, null);
+        String svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 231 231\">"
+                + new SvgFragmentPainter(DataTables.INSTANCE).paint(partName, spec.partVOf(partName), spec.themeOf(partName))
                 + "</svg>";
         return svg;
     }

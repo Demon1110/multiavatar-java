@@ -1,5 +1,6 @@
 package com.cary.multiavatar;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -42,7 +43,7 @@ public final class CompareWithJs {
 
         sb.append("}");
 
-        java.io.File f = new java.io.File(out);
+        File f = new File(out);
         f.getParentFile().mkdirs();
         try (Writer w = new OutputStreamWriter(new FileOutputStream(f), StandardCharsets.UTF_8)) {
             w.write(sb.toString());
