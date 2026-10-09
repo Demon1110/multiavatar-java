@@ -10,13 +10,17 @@ import java.util.Map;
  * 仅供 Multiavatar 使用，勿手工编辑。
  */
 public final class MultiavatarData {
-    private MultiavatarData() {}
-
-    /** 颜色主题: THEMES[partKey(角色2位+主题,如"00A")][partName] -> 颜色列表(可为"none") */
+    /**
+     * 颜色主题: THEMES[partKey(角色2位+主题,如"00A")][partName] -> 颜色列表(可为"none")
+     */
     public static final Map<String, Map<String, List<String>>> THEMES = buildThemes();
-
-    /** SVG 部件模板: PARTS[partKey(角色2位,如"00")][partName] -> SVG 片段(含 #xxx; 颜色占位符) */
+    /**
+     * SVG 部件模板: PARTS[partKey(角色2位,如"00")][partName] -> SVG 片段(含 #xxx; 颜色占位符)
+     */
     public static final Map<String, Map<String, String>> PARTS = buildParts();
+
+    private MultiavatarData() {
+    }
 
     private static void putTheme(Map<String, Map<String, List<String>>> m, String role, String theme, String part, String... colors) {
         Map<String, List<String>> parts = m.get(role + theme);

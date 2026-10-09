@@ -1,5 +1,7 @@
 package com.cary.multiavatar;
 
+import com.cary.multiavatar.render.AvatarFormat;
+
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -68,7 +70,7 @@ public final class JpgFormatCheck {
         check(Arrays.equals(avatar.jpg(), jpg), "Avatar.jpg() 与 toJpg 字节一致");
 
         // 8. render(JPG) 通用入口与 toJpg 等价
-        byte[] viaRender = Multiavatar.render("Binx Bond", com.cary.multiavatar.render.AvatarFormat.JPG,
+        byte[] viaRender = Multiavatar.render("Binx Bond", AvatarFormat.JPG,
                 AvatarOptions.defaults());
         check(Arrays.equals(viaRender, jpg), "render(JPG) 与 toJpg 字节一致");
 

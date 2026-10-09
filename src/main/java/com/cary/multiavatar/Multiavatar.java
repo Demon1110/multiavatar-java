@@ -76,7 +76,7 @@ public final class Multiavatar {
     /**
      * 生成头像 SVG。
      *
-     * @param input  输入字符串
+     * @param input   输入字符串
      * @param sansEnv 为 true 时输出不含背景圆（环境部件）
      */
     public static String multiavatar(String input, boolean sansEnv) {
@@ -86,7 +86,7 @@ public final class Multiavatar {
     /**
      * 生成头像 SVG。
      *
-     * @param input  输入字符串
+     * @param input   输入字符串
      * @param sansEnv 是否去掉背景圆
      * @param part    强制指定初始角色编号 "00"~"15"（对应 JS 的 ver.part）；null 表示自动
      * @param theme   强制指定颜色主题 "A"/"B"/"C"（对应 JS 的 ver.theme）；null 表示自动
@@ -107,7 +107,7 @@ public final class Multiavatar {
     /**
      * 生成头像对象（经全局 LRU 缓存）。
      *
-     * @param input  输入字符串
+     * @param input   输入字符串
      * @param options 生成选项（sansEnv/part/theme/size/svgSize/format）
      */
     public static Avatar avatar(String input, AvatarOptions options) {

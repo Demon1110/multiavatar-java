@@ -1,5 +1,7 @@
 package com.cary.multiavatar;
 
+import com.cary.multiavatar.svg.SvgParser;
+
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -44,7 +46,7 @@ public final class OutputSmokeCheck {
             javax.imageio.ImageReader reader = ImageIO.getImageReadersBySuffix("gif").next();
             reader.setInput(in);
             int frames = reader.getNumImages(true);
-            int svgShapes = com.cary.multiavatar.svg.SvgParser.parse(Multiavatar.multiavatar("Binx Bond")).shapes()
+            int svgShapes = SvgParser.parse(Multiavatar.multiavatar("Binx Bond")).shapes()
                     .size();
             System.out.println("GIF 帧数=" + frames + ", 形状数=" + svgShapes);
             check(frames == svgShapes * 2, "GIF 帧数应为 形状数×2");
