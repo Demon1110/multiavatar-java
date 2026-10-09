@@ -47,7 +47,9 @@ public final class PngCheckTool {
         for (String[] c : cases) {
             AvatarOptions opts = AvatarOptions.builder()
                     .part(c[1]).theme(c[2]).size(512).build();
-            String svg = Multiavatar.multiavatar(c[0], false, c[1], c[2]);
+            // 基线对照用原文 SVG（与 Chrome 渲染官方 JS 基准一致），体积优化另走 OptPngTool 对照
+            String svg = Multiavatar.avatar(c[0], AvatarOptions.builder()
+                    .part(c[1]).theme(c[2]).optimizeSvg(false).build()).svg();
             try (Writer w = new OutputStreamWriter(
                     new FileOutputStream(new File(dir, "t" + i + ".svg")), StandardCharsets.UTF_8)) {
                 w.write(svg);

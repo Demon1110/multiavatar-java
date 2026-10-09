@@ -33,9 +33,9 @@ public final class CacheCheck {
 
         // 3. 容量淘汰：容量 2 时第 3 个不同键淘汰最久未使用项
         AvatarCache small = new AvatarCache(2);
-        AvatarCache.Key k1 = new AvatarCache.Key("a", false, null, null, 256, 256);
-        AvatarCache.Key k2 = new AvatarCache.Key("b", false, null, null, 256, 256);
-        AvatarCache.Key k3 = new AvatarCache.Key("c", false, null, null, 256, 256);
+        AvatarCache.Key k1 = new AvatarCache.Key("a", false, null, null, 256, 256, false);
+        AvatarCache.Key k2 = new AvatarCache.Key("b", false, null, null, 256, 256, false);
+        AvatarCache.Key k3 = new AvatarCache.Key("c", false, null, null, 256, 256, false);
         Avatar v1 = Multiavatar.avatar("a");
         Avatar v2 = Multiavatar.avatar("b");
         Avatar v3 = Multiavatar.avatar("c");

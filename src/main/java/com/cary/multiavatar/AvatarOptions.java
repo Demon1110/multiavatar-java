@@ -28,6 +28,11 @@ public final class AvatarOptions {
      */
     public static final int DEFAULT_SVG_SIZE = 256;
 
+    /**
+     * 默认是否启用 SVG 体积优化（坐标精度裁剪，近无损）。
+     */
+    public static final boolean DEFAULT_OPTIMIZE_SVG = true;
+
     private final boolean sansEnv;
     private final String part;
     private final String theme;
@@ -35,6 +40,7 @@ public final class AvatarOptions {
     private final int svgWidth;
     private final int svgHeight;
     private final AvatarFormat format;
+    private final boolean optimizeSvg;
 
     private AvatarOptions(Builder b) {
         this.sansEnv = b.sansEnv;
@@ -44,6 +50,7 @@ public final class AvatarOptions {
         this.svgWidth = b.svgWidth;
         this.svgHeight = b.svgHeight;
         this.format = b.format;
+        this.optimizeSvg = b.optimizeSvg;
     }
 
     public static Builder builder() {
@@ -101,6 +108,13 @@ public final class AvatarOptions {
     }
 
     /**
+     * 是否启用 SVG 体积优化（坐标精度裁剪，近无损，渲染几何等价）。
+     */
+    public boolean optimizeSvg() {
+        return optimizeSvg;
+    }
+
+    /**
      * AvatarOptions 构建者（Builder 模式）。
      */
     public static final class Builder {
@@ -111,6 +125,7 @@ public final class AvatarOptions {
         private int svgWidth = DEFAULT_SVG_SIZE;
         private int svgHeight = DEFAULT_SVG_SIZE;
         private AvatarFormat format = AvatarFormat.SVG;
+        private boolean optimizeSvg = DEFAULT_OPTIMIZE_SVG;
 
         private Builder() {
         }
@@ -161,6 +176,15 @@ public final class AvatarOptions {
          */
         public Builder format(AvatarFormat format) {
             this.format = format;
+            return this;
+        }
+
+        /**
+         * 是否启用 SVG 体积优化（默认开）：坐标精度裁剪（四舍五入到 1 位小数）、
+         * style 尾分号删除，近无损、渲染几何等价；设 {@code false} 可获得与官方 JS 逐字符一致的原文。
+         */
+        public Builder optimizeSvg(boolean optimizeSvg) {
+            this.optimizeSvg = optimizeSvg;
             return this;
         }
 

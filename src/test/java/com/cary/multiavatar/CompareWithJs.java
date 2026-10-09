@@ -38,7 +38,7 @@ public final class CompareWithJs {
         sb.append("},\"ver\":{");
         appendMap(sb, tests.subList(1, 2), false, "00", "A");
         sb.append(",").append(escJson("test")).append(":");
-        sb.append(escJson(Multiavatar.multiavatar("test", false, "15", "C")));
+        sb.append(escJson(rawSvg("test", false, "15", "C")));
         sb.append("}");
 
         sb.append("}");
@@ -64,8 +64,16 @@ public final class CompareWithJs {
             }
             first = false;
             sb.append(escJson(t)).append(":");
-            sb.append(escJson(Multiavatar.multiavatar(t, sansEnv, part, theme)));
+            sb.append(escJson(rawSvg(t, sansEnv, part, theme)));
         }
+    }
+
+    /**
+     * 与官方 JS 逐字符比对的基线必须关闭 SVG 体积优化。
+     */
+    private static String rawSvg(String input, boolean sansEnv, String part, String theme) {
+        return Multiavatar.avatar(input, AvatarOptions.builder()
+                .sansEnv(sansEnv).part(part).theme(theme).optimizeSvg(false).build()).svg();
     }
 
     private static String escJson(String s) {

@@ -80,15 +80,17 @@ public final class AvatarCache {
         private final String theme;
         private final int svgWidth;
         private final int svgHeight;
+        private final boolean optimizeSvg;
 
         public Key(String input, boolean sansEnv, String part, String theme,
-                   int svgWidth, int svgHeight) {
+                   int svgWidth, int svgHeight, boolean optimizeSvg) {
             this.input = input == null ? "" : input;
             this.sansEnv = sansEnv;
             this.part = part;
             this.theme = theme;
             this.svgWidth = svgWidth;
             this.svgHeight = svgHeight;
+            this.optimizeSvg = optimizeSvg;
         }
 
         private static boolean eq(String a, String b) {
@@ -107,6 +109,7 @@ public final class AvatarCache {
             return sansEnv == k.sansEnv
                     && svgWidth == k.svgWidth
                     && svgHeight == k.svgHeight
+                    && optimizeSvg == k.optimizeSvg
                     && input.equals(k.input)
                     && eq(part, k.part)
                     && eq(theme, k.theme);
@@ -120,6 +123,7 @@ public final class AvatarCache {
             h = 31 * h + (theme == null ? 0 : theme.hashCode());
             h = 31 * h + svgWidth;
             h = 31 * h + svgHeight;
+            h = 31 * h + (optimizeSvg ? 1 : 0);
             return h;
         }
     }

@@ -1,6 +1,7 @@
 package com.cary.multiavatar;
 
 import com.cary.multiavatar.core.SvgComposer;
+import com.cary.multiavatar.core.SvgOptimizer;
 import com.cary.multiavatar.render.*;
 
 import java.awt.*;
@@ -69,7 +70,7 @@ public final class Multiavatar {
      * @return SVG 代码；输入为空字符串时返回空串（与 JS 一致）
      */
     public static String multiavatar(String input) {
-        return COMPOSER.compose(input, false, null, null);
+        return avatar(input).svg();
     }
 
     /**
@@ -79,7 +80,7 @@ public final class Multiavatar {
      * @param sansEnv 为 true 时输出不含背景圆（环境部件）
      */
     public static String multiavatar(String input, boolean sansEnv) {
-        return COMPOSER.compose(input, sansEnv, null, null);
+        return avatar(input, AvatarOptions.builder().sansEnv(sansEnv).build()).svg();
     }
 
     /**
@@ -91,7 +92,7 @@ public final class Multiavatar {
      * @param theme   强制指定颜色主题 "A"/"B"/"C"（对应 JS 的 ver.theme）；null 表示自动
      */
     public static String multiavatar(String input, boolean sansEnv, String part, String theme) {
-        return COMPOSER.compose(input, sansEnv, part, theme);
+        return avatar(input, AvatarOptions.builder().sansEnv(sansEnv).part(part).theme(theme).build()).svg();
     }
 
     // ==================== 新 API（面向对象） ====================
@@ -115,13 +116,16 @@ public final class Multiavatar {
         }
         String norm = input == null ? "" : input;
         AvatarCache.Key key = new AvatarCache.Key(norm, options.sansEnv(), options.part(),
-                options.theme(), options.svgWidth(), options.svgHeight());
+                options.theme(), options.svgWidth(), options.svgHeight(), options.optimizeSvg());
         Avatar cached = CACHE.get(key);
         if (cached != null) {
             return cached;
         }
         String svg = COMPOSER.compose(norm, options.sansEnv(), options.part(), options.theme(),
                 options.svgWidth(), options.svgHeight());
+        if (options.optimizeSvg() && !svg.isEmpty()) {
+            svg = SvgOptimizer.optimize(svg);
+        }
         Avatar avatar = new Avatar(norm, options, svg);
         CACHE.put(key, avatar);
         return avatar;
@@ -335,14 +339,15 @@ public final class Multiavatar {
         for (int i = 0; i < samples.length; i++) {
             String s = samples[i];
             String name = s.replaceAll("[^A-Za-z0-9_-]", "_");
+            Avatar avatar = avatar(s); // 默认启用 SVG 体积优化
             try (Writer w = new OutputStreamWriter(
                     new FileOutputStream(new File(dir, "avatar_" + name + ".svg")),
                     StandardCharsets.UTF_8)) {
-                w.write(multiavatar(s));
+                w.write(avatar.svg());
             }
             writePng(s, AvatarOptions.builder().size(size).build(),
                     new File(dir, "avatar_" + name + ".png"));
-            imgs[i] = toImage(s, size);
+            imgs[i] = avatar.toImage(size);
             System.out.println("已生成: " + dir.getAbsolutePath() + "\\avatar_" + name + ".{svg,png}");
         }
 

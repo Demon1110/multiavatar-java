@@ -11,18 +11,19 @@ Multiavatar —— 多文化头像生成器（Multicultural Avatar Maker）的**
 
 ## 能力一览
 
-| 能力                | 说明                                                                                         |
-|-------------------|--------------------------------------------------------------------------------------------|
-| **SVG 输出**        | 完整头像 / 去背景（sansEnv）/ 强制角色+主题（ver）三种模式，与官方 JS **逐字符一致**                                     |
-| **PNG 输出**        | 基于 JDK 自带 Java2D 光栅化，无需任何第三方 jar；任意尺寸（默认 256×256），透明背景                                     |
-| **JPEG 输出**       | 白底不透明 JPEG（博客/OA 场景），`AvatarFormat.JPG`                                                    |
-| **GIF 动画**        | 部件逐帧淡入（env→head→clo→top→eyes→mouth 依次长出），无限循环，`AvatarFormat.GIF`                           |
-| **BufferedImage** | `Avatar.toImage()` / `Multiavatar.toImage()` 直接返回图像供继续加工（缩放/合成/加水印）                        |
-| **favicon 打包**    | 一次生成 16/32/48/64/128/256 多尺寸 PNG 并打成 zip（零依赖，`java.util.zip`）                              |
-| **PNG data URI**  | `toDataUri()` / `Avatar.dataUri()` 返回 `data:image/png;base64,...`，`<img src>` 直接内嵌，免上传     |
-| **LRU 缓存**        | 全局 LRU（默认容量 128）：同参数输入重复生成复用已组装 `Avatar`，满则淘汰最久未使用（`LinkedHashMap` 实现，零依赖）                 |
-| **批量预览图**         | 演示入口自动拼接 N 输入横排预览图 `demo/preview_grid.png`（兼作批量渲染视觉回归图）                                    |
-| **零依赖**           | `pom.xml` 的 `<dependencies>` 为空，只用 JDK 标准库（java.awt / javax.imageio / MessageDigest / DOM） |
+| 能力                | 说明                                                                                                                                    |
+|-------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| **SVG 输出**        | 完整头像 / 去背景（sansEnv）/ 强制角色+主题（ver）三种模式，与官方 JS **逐字符一致**                                                                                |
+| **PNG 输出**        | 基于 JDK 自带 Java2D 光栅化，无需任何第三方 jar；任意尺寸（默认 256×256），透明背景                                                                                |
+| **JPEG 输出**       | 白底不透明 JPEG（博客/OA 场景），`AvatarFormat.JPG`                                                                                               |
+| **GIF 动画**        | 部件逐帧淡入（env→head→clo→top→eyes→mouth 依次长出），无限循环，`AvatarFormat.GIF`                                                                      |
+| **BufferedImage** | `Avatar.toImage()` / `Multiavatar.toImage()` 直接返回图像供继续加工（缩放/合成/加水印）                                                                   |
+| **favicon 打包**    | 一次生成 16/32/48/64/128/256 多尺寸 PNG 并打成 zip（零依赖，`java.util.zip`）                                                                         |
+| **PNG data URI**  | `toDataUri()` / `Avatar.dataUri()` 返回 `data:image/png;base64,...`，`<img src>` 直接内嵌，免上传                                                |
+| **LRU 缓存**        | 全局 LRU（默认容量 128）：同参数输入重复生成复用已组装 `Avatar`，满则淘汰最久未使用（`LinkedHashMap` 实现，零依赖）                                                            |
+| **批量预览图**         | 演示入口自动拼接 N 输入横排预览图 `demo/preview_grid.png`（兼作批量渲染视觉回归图）                                                                               |
+| **SVG 体积优化**      | 默认开启：path 坐标按精度取整（描边 2 位 / 填充 1 位）、transform 与 polygon 坐标取整、删除 style 尾分号，体积再减 16%~31%（`AvatarOptions.optimizeSvg(false)` 可关闭，还原逐字符原文） |
+| **零依赖**           | `pom.xml` 的 `<dependencies>` 为空，只用 JDK 标准库（java.awt / javax.imageio / MessageDigest / DOM）                                            |
 
 ---
 
@@ -123,6 +124,9 @@ byte[] jpg = avatar.jpg();                // JPEG 字节（白底）
 // 直接获取渲染器（策略模式），可自行扩展新格式
 AvatarRenderer renderer = Renderers.create(AvatarFormat.GIF);
 byte[] out = renderer.render(avatar.svg(), 256);
+
+// SVG 体积优化默认开启（约 -20%~-30%）；需要逐字符原文时显式关闭
+Avatar avatarRaw = Multiavatar.avatar("Binx Bond", AvatarOptions.builder().optimizeSvg(false).build());
 ```
 
 ### 命令行演示
@@ -253,6 +257,22 @@ data URI 前缀与 Base64 可解码回 PNG 且与 `Avatar.dataUri()` 一致。
   **extra 6.1%~7.7% ≤ 10%**（差异仅为压缩振铃导致的边缘扩散）
 
 > 注：上述验证工具位于 `src/test/java`，仅用于验证，不是库代码。
+
+### 5. SVG 体积优化专项验证（SvgOptimizeCheck）
+
+`src/test/java/com/cary/multiavatar/SvgOptimizeCheck.java`（零依赖）：
+
+- **体积减量**：10 个样例（含中文/邮箱/纯数字/特殊字符）实测减量 **16.6%~31.1%**（`github` 5900B→4075B）
+- **等价性双指标**（Java 光栅化 256 对比优化前后）：**recall ≥ 0.9977**、**extra ≤ 0.16%**（阈值 0.5%）——
+  全部通过；`optimizeSvg(false)` 逐字符还原原文；优化开关已入 LRU 缓存键
+- **数据事实**：`MultiavatarData` 全部 221 个形状中 48 个 `fill:none` **全部带描边**（可见线条），
+  不存在可删除的隐形形状，故删除项不做、描边形状保留
+- **关键修复（负零粘连）**：紧凑负号分隔（如 `2.707-0.0428`）中负小数取整归零时若输出 `0`，
+  会与前一数字粘连成 `2.70`（坐标参数丢失 → 路径扭曲延伸）。修复为负数归零输出 `-0`
+  （`-0` 是合法 SVG 数字且负号永远保持 token 分隔），回归断言 `-0.0428 -> "-0"`。
+  该缺陷正是 `github` 样例优化后形状扩散 4.4%（Chrome/Java 双端复现）的根因，修复后降至 0.03%
+- **Chrome 对照**（34 用例，优化版 Java 光栅化 vs Chrome 渲染）：修复前最差 idx=16=2.83%，
+  修复后**全部 ≤ 0.078%**（阈值 3%）
 
 ---
 

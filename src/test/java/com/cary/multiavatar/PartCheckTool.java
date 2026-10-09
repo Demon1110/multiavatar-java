@@ -29,7 +29,7 @@ public final class PartCheckTool {
         File dir = new File(args.length > 1 ? args[1] : "target/partcheck");
         dir.mkdirs();
 
-        String full = Multiavatar.multiavatar(input);
+        String full = Multiavatar.avatar(input, AvatarOptions.builder().optimizeSvg(false).build()).svg();
         try (Writer w = new OutputStreamWriter(new FileOutputStream(new File(dir, "full.svg")), StandardCharsets.UTF_8)) {
             w.write(full);
         }
