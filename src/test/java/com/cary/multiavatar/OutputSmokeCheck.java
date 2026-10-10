@@ -3,6 +3,8 @@ package com.cary.multiavatar;
 import com.cary.multiavatar.svg.SvgParser;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.FileImageInputStream;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -38,18 +40,21 @@ public final class OutputSmokeCheck {
         check(jpgImg.getRGB(0, 0) == 0xFFFFFFFF, "JPG 左上角应为白底");
         check(!jpgImg.getColorModel().hasAlpha(), "JPG 不应有 alpha 通道");
 
-        // 3. GIF：可解码、帧数 = 形状数×2
+        // 3. GIF：可解码、帧数 = 形状数×2+1、首帧 = 完整头像（外壳缩略图可见完整图像）
         byte[] gif = Multiavatar.toGif("Binx Bond", 128);
         File gifFile = new File(dir, "out.gif");
         write(gifFile, gif);
-        try (javax.imageio.stream.FileImageInputStream in = new javax.imageio.stream.FileImageInputStream(gifFile)) {
-            javax.imageio.ImageReader reader = ImageIO.getImageReadersBySuffix("gif").next();
+        try (FileImageInputStream in = new FileImageInputStream(gifFile)) {
+            ImageReader reader = ImageIO.getImageReadersBySuffix("gif").next();
             reader.setInput(in);
             int frames = reader.getNumImages(true);
             int svgShapes = SvgParser.parse(Multiavatar.multiavatar("Binx Bond")).shapes()
                     .size();
             System.out.println("GIF 帧数=" + frames + ", 形状数=" + svgShapes);
-            check(frames == svgShapes * 2, "GIF 帧数应为 形状数×2");
+            check(frames == svgShapes * 2 + 1, "GIF 帧数应为 形状数×2+1（含首帧完整头像）");
+            BufferedImage first = reader.read(0);
+            BufferedImage last = reader.read(frames - 1);
+            check(samePixels(first, last), "GIF 首帧（完整头像）应与末帧像素一致");
             reader.dispose();
         }
 
@@ -95,6 +100,23 @@ public final class OutputSmokeCheck {
         try (FileOutputStream fos = new FileOutputStream(f)) {
             fos.write(b);
         }
+    }
+
+    /**
+     * 两帧逐像素比较（尺寸与 ARGB 全同）。
+     */
+    private static boolean samePixels(BufferedImage a, BufferedImage b) {
+        if (a.getWidth() != b.getWidth() || a.getHeight() != b.getHeight()) {
+            return false;
+        }
+        for (int y = 0; y < a.getHeight(); y++) {
+            for (int x = 0; x < a.getWidth(); x++) {
+                if (a.getRGB(x, y) != b.getRGB(x, y)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static void check(boolean cond, String msg) {

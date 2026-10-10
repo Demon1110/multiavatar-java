@@ -14,6 +14,10 @@ import java.util.List;
  * <p>形状按文档顺序即部件组装顺序（env → head → clo → top → eyes → mouth），
  * 对第 k 个形状依次生成「半透明淡入帧 + 全显帧」，每出现一个部件就定格一拍，
  * 形成头像逐步「长出来」的循环动画。帧透明与元素自身 opacity 相乘，颜色语义与静态渲染一致。</p>
+ *
+ * <p><b>首帧固定为完整头像</b>（全部形状全显）：资源管理器等外壳预览只取 GIF 第一帧
+ * 做缩略图，若首帧是几乎透明的淡入帧会被渲染成全黑，因此首帧用完整头像保证
+ * 「不打开也能看到完整图像」。</p>
  */
 public final class GifAvatarRenderer implements AvatarRenderer {
 
@@ -25,7 +29,7 @@ public final class GifAvatarRenderer implements AvatarRenderer {
     /**
      * 每帧停留毫秒。
      */
-    static final int FRAME_DELAY_MS = 120;
+    static final int FRAME_DELAY_MS = 100;
 
     @Override
     public byte[] render(String svg, int size) {
@@ -34,7 +38,9 @@ public final class GifAvatarRenderer implements AvatarRenderer {
         if (shapes.isEmpty()) {
             return new byte[0];
         }
-        List<BufferedImage> frames = new ArrayList<>(shapes.size() * 2);
+        // 首帧 = 完整头像（供外壳缩略图预览），随后是部件逐帧淡入动画
+        List<BufferedImage> frames = new ArrayList<>(shapes.size() * 2 + 1);
+        frames.add(SvgRasterizer.rasterize(doc, size, shapes.size(), 1.0));
         for (int k = 1; k <= shapes.size(); k++) {
             frames.add(SvgRasterizer.rasterize(doc, size, k, FADE_IN_ALPHA));
             frames.add(SvgRasterizer.rasterize(doc, size, k, 1.0));
