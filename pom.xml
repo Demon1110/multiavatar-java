@@ -6,7 +6,7 @@
 
     <groupId>com.cary</groupId>
     <artifactId>multiavatar-java</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <packaging>jar</packaging>
 
     <name>Multiavatar (Pure Java)</name>
