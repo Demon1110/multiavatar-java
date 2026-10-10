@@ -1,5 +1,6 @@
 package com.cary.multiavatar;
 
+import com.cary.multiavatar.render.Favicons;
 import com.cary.multiavatar.svg.SvgParser;
 
 import javax.imageio.ImageIO;
@@ -30,6 +31,12 @@ public final class OutputSmokeCheck {
                 "toImage 尺寸应为 128×128");
         // 空输入返回 null
         check(Multiavatar.toImage("") == null, "toImage 空输入应返回 null");
+        // 1b. SVG 解析缓存：同一 Avatar 多次 document() 返回同一实例（只 parse 一次）
+        Avatar cachedAvatar = Multiavatar.avatar("Binx Bond");
+        check(cachedAvatar.document() == cachedAvatar.document(),
+                "Avatar.document() 应缓存复用同一 SvgDocument");
+        check(Multiavatar.toImage("Binx Bond", 128).getRGB(0, 0) == img.getRGB(0, 0),
+                "toImage 重复调用结果一致");
 
         // 2. JPG：白底、JPEG 可解码
         byte[] jpg = Multiavatar.toJpg("Binx Bond", 128);
@@ -82,6 +89,28 @@ public final class OutputSmokeCheck {
             while (zis.getNextEntry() != null) entries2++;
         }
         check(entries2 == 2, "自定义 favicon zip 应有 2 个条目，实际 " + entries2);
+
+        // 4b. favicon ICO：头合法、条目数、每条目数据区可解码为 PNG
+        byte[] ico = Multiavatar.toFaviconIco("Binx Bond");
+        File icoFile = new File(dir, "favicon.ico");
+        write(icoFile, ico);
+        check(ico.length > 6 && ico[0] == 0 && ico[1] == 0
+                && ico[2] == 1 && ico[3] == 0, "ICO 头合法（reserved=0, type=1）");
+        int icoCount = (ico[4] & 0xFF) | ((ico[5] & 0xFF) << 8);
+        check(icoCount == 6, "默认 ICO 应有 6 个尺寸，实际 " + icoCount);
+        for (int i = 0; i < icoCount; i++) {
+            int base = 6 + 16 * i;
+            int len = (ico[base + 8] & 0xFF) | ((ico[base + 9] & 0xFF) << 8)
+                    | ((ico[base + 10] & 0xFF) << 16) | ((ico[base + 11] & 0xFF) << 24);
+            int off = (ico[base + 12] & 0xFF) | ((ico[base + 13] & 0xFF) << 8)
+                    | ((ico[base + 14] & 0xFF) << 16) | ((ico[base + 15] & 0xFF) << 24);
+            BufferedImage icoImg = ImageIO.read(new ByteArrayInputStream(ico, off, len));
+            check(icoImg != null, "ICO 条目 " + i + " 数据区可解码为 PNG");
+        }
+        byte[] ico2 = Favicons.toIco(Multiavatar.multiavatar("Binx Bond"), 32, 64);
+        check(((ico2[4] & 0xFF) | ((ico2[5] & 0xFF) << 8)) == 2,
+                "底层 Favicons.toIco 自定义尺寸应有 2 个，实际 "
+                        + ((ico2[4] & 0xFF) | ((ico2[5] & 0xFF) << 8)));
 
         // 5. data URI：前缀、Base64 可解码回 PNG 且尺寸一致；空输入返回空串
         String uri = Multiavatar.toDataUri("Binx Bond", 128);

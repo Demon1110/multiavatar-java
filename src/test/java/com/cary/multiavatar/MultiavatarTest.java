@@ -18,8 +18,19 @@ public class MultiavatarTest {
      * </ul>
      */
     public static void main(String[] args) throws Exception {
-        testFirst(args);
+//        testFirst(args);
 //        testMultiavatar();
+        testFaviconZip();
+    }
+
+    private static void testFaviconZip() throws IOException {
+        String input = "Binx Bond";
+        File file = new File("favicon.ico");
+        // 门面 API：固定 16/32/48/64/128/256 六尺寸；自定义尺寸走底层 Favicons.toIco
+        Multiavatar.writeFaviconIco(input, file, 16, 32, 48);
+//        if (!file.exists()) {
+//            file.createNewFile();
+//        }
     }
 
     private static void testFirst(String[] args) throws IOException {

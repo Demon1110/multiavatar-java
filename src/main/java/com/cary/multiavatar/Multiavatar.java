@@ -268,6 +268,21 @@ public final class Multiavatar {
     }
 
     /**
+     * 打包多尺寸 PNG 为单文件 favicon ICO 字节（默认 16/32/48/64/128/256）。
+     */
+    public static byte[] toFaviconIco(String input) {
+        return toFaviconIco(input, (int[]) null);
+    }
+
+    /**
+     * 打包多尺寸 PNG 为单文件 favicon ICO 字节（自定义尺寸）。
+     */
+    public static byte[] toFaviconIco(String input, int... sizes) {
+        String svg = multiavatar(input);
+        return svg.isEmpty() ? new byte[0] : Favicons.toIco(svg, sizes);
+    }
+
+    /**
      * 通用渲染入口：按格式与选项渲染。
      *
      * @param format SVG 返回文本 UTF-8 字节；PNG/JPEG/GIF 返回对应图片字节
@@ -312,6 +327,23 @@ public final class Multiavatar {
         byte[] zip = toFaviconZip(input, sizes);
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(zip);
+        }
+    }
+
+    /**
+     * 将 favicon ICO 写入文件（默认尺寸）。
+     */
+    public static void writeFaviconIco(String input, File file) throws IOException {
+        writeFaviconIco(input, file, (int[]) null);
+    }
+
+    /**
+     * 将 favicon ICO 写入文件（自定义尺寸）。
+     */
+    public static void writeFaviconIco(String input, File file, int... sizes) throws IOException {
+        byte[] ico = toFaviconIco(input, sizes);
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(ico);
         }
     }
 

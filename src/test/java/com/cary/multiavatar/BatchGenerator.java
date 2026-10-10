@@ -37,7 +37,7 @@ public final class BatchGenerator {
     public static void main(String[] args) throws Exception {
         if (args.length < 2) {
             System.out.println("用法: BatchGenerator <namesFile> <outDir> [--size N] "
-                    + "[--format svg|png|jpg|gif|favicon] [--no-grid] [--no-optimize]");
+                    + "[--format svg|png|jpg|gif|favicon|ico] [--no-grid] [--no-optimize]");
             System.exit(2);
             return;
         }
@@ -150,10 +150,33 @@ public final class BatchGenerator {
             byte[] zip = Multiavatar.toFaviconZip(name);
             writeBytes(out, zip);
             checkZip(zip, name);
+        } else if ("ico".equals(format)) {
+            byte[] ico = Multiavatar.toFaviconIco(name);
+            writeBytes(out, ico);
+            checkIco(ico, name);
         } else {
             throw new IllegalArgumentException("不支持的格式: " + format);
         }
         return out;
+    }
+
+    /**
+     * ICO 断言：头合法、默认 6 条目、每条目数据区可解码为 PNG。
+     */
+    private static void checkIco(byte[] ico, String name) throws IOException {
+        check(ico.length > 6 && ico[0] == 0 && ico[1] == 0
+                && ico[2] == 1 && ico[3] == 0, name + ": ICO 头合法");
+        int count = (ico[4] & 0xFF) | ((ico[5] & 0xFF) << 8);
+        check(count >= 2, name + ": ICO 应含至少 2 个尺寸，实际 " + count);
+        for (int i = 0; i < count; i++) {
+            int base = 6 + 16 * i;
+            int len = (ico[base + 8] & 0xFF) | ((ico[base + 9] & 0xFF) << 8)
+                    | ((ico[base + 10] & 0xFF) << 16) | ((ico[base + 11] & 0xFF) << 24);
+            int off = (ico[base + 12] & 0xFF) | ((ico[base + 13] & 0xFF) << 8)
+                    | ((ico[base + 14] & 0xFF) << 16) | ((ico[base + 15] & 0xFF) << 24);
+            BufferedImage img = ImageIO.read(new ByteArrayInputStream(ico, off, len));
+            check(img != null, name + ": ICO 条目 " + i + " 数据可解码");
+        }
     }
 
     /**

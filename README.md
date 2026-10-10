@@ -19,6 +19,8 @@ Multiavatar —— 多文化头像生成器（Multicultural Avatar Maker）的**
 | **GIF 动画**        | 部件逐帧淡入（env→head→clo→top→eyes→mouth 依次长出），无限循环，`AvatarFormat.GIF`                                                                      |
 | **BufferedImage** | `Avatar.toImage()` / `Multiavatar.toImage()` 直接返回图像供继续加工（缩放/合成/加水印）                                                                   |
 | **favicon 打包**    | 一次生成 16/32/48/64/128/256 多尺寸 PNG 并打成 zip（零依赖，`java.util.zip`）                                                                         |
+| **favicon ICO**   | 手写 ICO 容器（ICONDIR + 内嵌 PNG，Vista+ 标准），`toFaviconIco()` / `writeFaviconIco()` 直接产出单文件 `.ico`                                           |
+| **SVG 解析缓存**      | `Avatar.document()` 惰性缓存解析结果：同一头像的多次 PNG/JPG/GIF 请求只解析一次 SVG（volatile + 双重检查，线程安全）                                                    |
 | **PNG data URI**  | `toDataUri()` / `Avatar.dataUri()` 返回 `data:image/png;base64,...`，`<img src>` 直接内嵌，免上传                                                |
 | **LRU 缓存**        | 全局 LRU（默认容量 128）：同参数输入重复生成复用已组装 `Avatar`，满则淘汰最久未使用（`LinkedHashMap` 实现，零依赖）                                                            |
 | **批量预览图**         | 演示入口自动拼接 N 输入横排预览图 `demo/preview_grid.png`（兼作批量渲染视觉回归图）                                                                               |

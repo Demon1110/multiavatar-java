@@ -1,6 +1,8 @@
 package com.cary.multiavatar;
 
 import com.cary.multiavatar.render.*;
+import com.cary.multiavatar.svg.SvgDocument;
+import com.cary.multiavatar.svg.SvgParser;
 
 import java.awt.image.BufferedImage;
 import java.util.Base64;
@@ -10,13 +12,18 @@ import java.util.Base64;
  *
  * <p>通过 {@link Multiavatar#avatar(String)} 或 {@link Multiavatar#avatar(String, AvatarOptions)} 获取。
  * SVG 生成后缓存；图像按请求尺寸惰性渲染：{@link #toImage(int)} 直接返回 {@link BufferedImage}
- * 供继续加工，{@link #png(int)} / {@link #jpg(int)} 编码为对应格式字节。</p>
+ * 供继续加工，{@link #png(int)} / {@link #jpg(int)} 编码为对应格式字节。
+ * 解析后的 {@link SvgDocument} 同样惰性缓存——同一 Avatar 的多次图像请求只解析一次 SVG。</p>
  */
 public final class Avatar {
 
     private final String input;
     private final AvatarOptions options;
     private final String svg;
+    /**
+     * 惰性解析缓存：同一 Avatar 的图像请求只 parse 一次 SVG（volatile + 双重检查，线程安全）。
+     */
+    private volatile SvgDocument parsed;
 
     Avatar(String input, AvatarOptions options, String svg) {
         this.input = input;
@@ -46,6 +53,25 @@ public final class Avatar {
     }
 
     /**
+     * 解析后的 SVG 文档（惰性缓存，线程安全；空输入时为空文档）。
+     *
+     * <p>供渲染器复用，避免同一头像的多次图像请求重复解析 SVG 文本。</p>
+     */
+    public SvgDocument document() {
+        SvgDocument d = parsed;
+        if (d == null) {
+            synchronized (this) {
+                d = parsed;
+                if (d == null) {
+                    d = SvgParser.parse(svg);
+                    parsed = d;
+                }
+            }
+        }
+        return d;
+    }
+
+    /**
      * 是否有内容（输入为空时无内容）。
      */
     public boolean isEmpty() {
@@ -69,7 +95,8 @@ public final class Avatar {
         if (isEmpty()) {
             return null;
         }
-        return SvgRasterizer.rasterize(svg, size);
+        SvgDocument d = document();
+        return SvgRasterizer.rasterize(d, size, d.shapes().size(), 1.0);
     }
 
     /**
