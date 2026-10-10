@@ -100,12 +100,15 @@ jobs:
       - name: Deploy to GitHub Packages
         run: mvn -B -ntp deploy
 
-      # 6) 提交版本号变更 + 打 tag + 创建 GitHub Release
+      # 6) 提交版本号变更 + 打 tag + 创建 GitHub Release（附带 jar + sources.jar 资产）
       - name: Tag and create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # gh CLI 需显式注入 token
         run: |
           NEW=${{ steps.version.outputs.next }}
+          # 复制为带版本号的资产名（finalName 不含版本号）
+          cp target/multiavatar-java.jar "target/multiavatar-java-${NEW}.jar"
+          cp target/multiavatar-java-sources.jar "target/multiavatar-java-${NEW}-sources.jar"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add pom.xml
@@ -116,4 +119,6 @@ jobs:
           gh release create "v${NEW}" \
             --title "v${NEW}" \
             --notes "Auto release v${NEW} (Multiavatar pure Java, JDK8+, zero dependency)" \
-            --target master
+            --target master \
+            "target/multiavatar-java-${NEW}.jar" \
+            "target/multiavatar-java-${NEW}-sources.jar"
