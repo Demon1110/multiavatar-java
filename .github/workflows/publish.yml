@@ -49,7 +49,7 @@ jobs:
               <server>
                 <id>github</id>
                 <username>${{ github.actor }}</username>
-                <password>${{ secrets.GITHUB_TOKEN }}</password>
+                <password>${{ secrets.GH_PAT }}</password>
               </server>
             </servers>
           </settings>
@@ -70,7 +70,7 @@ jobs:
             echo "MISSING: <server id=github> not found in settings.xml"
           fi
           echo "--- GITHUB_TOKEN repo access (200=ok) ---"
-          curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ github.repository }}"
+          curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer ${{ secrets.GH_PAT }}" "https://api.github.com/repos/${{ github.repository }}"
 
       # 发布前跑一遍项目自带回归（main 方法式检查，非 JUnit）
       # 注意：Linux 上 classpath 分隔符是冒号 :（Windows 才是分号 ;）
