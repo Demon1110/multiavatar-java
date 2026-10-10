@@ -60,11 +60,12 @@ jobs:
       - name: Show resolved deploy URL
         run: mvn -q -ntp help:evaluate -Dexpression=project.distributionManagement.repository.url -DforceStdout
 
-      # 401 诊断（不打印任何密码）：验证 settings.xml 的 server 是否生成、GITHUB_TOKEN 是否有效
+      # 认证诊断（不打印 token 值）：探测 PAT 对该仓库是否有读权限
+      # 200 = PAT 有效且仓库已授权；403 = PAT 未授权该仓库 / 权限不足；404 = 仓库不存在
       - name: Diagnose auth (no secrets printed)
         run: |
-          echo "--- GITHUB_TOKEN repo access (200=ok) ---"
-          echo "Authorization  Bearer ${{ secrets.ACTION_TOKEN }} https://api.github.com/repos/${{ github.repository }}"
+          echo "--- ACTION_TOKEN repo access (200=ok, 403=not authorized) ---"
+          curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer ${{ secrets.ACTION_TOKEN }}" "https://api.github.com/repos/${{ github.repository }}"
 
       # 发布前跑一遍项目自带回归（main 方法式检查，非 JUnit）
       # 注意：Linux 上 classpath 分隔符是冒号 :（Windows 才是分号 ;）
