@@ -102,6 +102,8 @@ jobs:
 
       # 6) 提交版本号变更 + 打 tag + 创建 GitHub Release
       - name: Tag and create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # gh CLI 需显式注入 token
         run: |
           NEW=${{ steps.version.outputs.next }}
           git config user.name "github-actions[bot]"
