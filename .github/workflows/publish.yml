@@ -46,6 +46,18 @@ jobs:
       - name: Show resolved deploy URL
         run: mvn -q -ntp help:evaluate -Dexpression=project.distributionManagement.repository.url -DforceStdout
 
+      # 401 诊断（不打印任何密码）：验证 settings.xml 的 server 是否生成、GITHUB_TOKEN 是否有效
+      - name: Diagnose auth (no secrets printed)
+        run: |
+          echo "--- settings.xml server (github) ---"
+          if grep -q '<id>github</id>' "$HOME/.m2/settings.xml"; then
+            grep -A3 '<id>github</id>' "$HOME/.m2/settings.xml" | sed 's/<password>.*<\/password>/<password>***<\/password>/'
+          else
+            echo "MISSING: <server id=github> not found in settings.xml"
+          fi
+          echo "--- GITHUB_TOKEN status (200=valid) ---"
+          curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user
+
       # 发布前跑一遍项目自带回归（main 方法式检查，非 JUnit）
       # 注意：Linux 上 classpath 分隔符是冒号 :（Windows 才是分号 ;）
       - name: Regression checks
