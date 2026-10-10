@@ -31,7 +31,8 @@ jobs:
 
       - name: Smoke checks
         run: |
-          java -cp "target/classes;target/test-classes" com.cary.multiavatar.SvgOptimizeCheck
-          java -cp "target/classes;target/test-classes" com.cary.multiavatar.OutputSmokeCheck
-          java -cp "target/classes;target/test-classes" com.cary.multiavatar.JpgFormatCheck
-          java -cp "target/classes;target/test-classes" com.cary.multiavatar.CacheCheck
+          CP="target/classes:target/test-classes"
+          java -cp "$CP" com.cary.multiavatar.SvgOptimizeCheck
+          java -cp "$CP" com.cary.multiavatar.OutputSmokeCheck
+          java -cp "$CP" com.cary.multiavatar.JpgFormatCheck
+          java -cp "$CP" com.cary.multiavatar.CacheCheck

@@ -47,13 +47,15 @@ jobs:
         run: mvn -q -ntp help:evaluate -Dexpression=project.distributionManagement.repository.url -DforceStdout
 
       # 发布前跑一遍项目自带回归（main 方法式检查，非 JUnit）
+      # 注意：Linux 上 classpath 分隔符是冒号 :（Windows 才是分号 ;）
       - name: Regression checks
         run: |
           mvn -q -ntp compile test-compile
-          java -cp "target/classes;target/test-classes" com.cary.multiavatar.SvgOptimizeCheck
-          java -cp "target/classes;target/test-classes" com.cary.multiavatar.OutputSmokeCheck
-          java -cp "target/classes;target/test-classes" com.cary.multiavatar.JpgFormatCheck
-          java -cp "target/classes;target/test-classes" com.cary.multiavatar.CacheCheck
+          CP="target/classes:target/test-classes"
+          java -cp "$CP" com.cary.multiavatar.SvgOptimizeCheck
+          java -cp "$CP" com.cary.multiavatar.OutputSmokeCheck
+          java -cp "$CP" com.cary.multiavatar.JpgFormatCheck
+          java -cp "$CP" com.cary.multiavatar.CacheCheck
 
       # 打 jar（含 sources.jar，maven-source-plugin 已配置）并上传到 GitHub Packages
       - name: Deploy to GitHub Packages
