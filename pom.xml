@@ -33,6 +33,8 @@
                     <source>8</source>
                     <target>8</target>
                     <encoding>UTF-8</encoding>
+                    <!-- 精简 jar：不输出调试信息（等价 javac -g:none） -->
+                    <debug>false</debug>
                 </configuration>
             </plugin>
         </plugins>

@@ -1,7 +1,5 @@
 package com.cary.multiavatar.data;
 
-import com.cary.multiavatar.MultiavatarData;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;

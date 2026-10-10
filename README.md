@@ -37,7 +37,9 @@ Multiavatar —— 多文化头像生成器（Multicultural Avatar Maker）的**
    环境圆几何边界恰为 0~231，头像正好充满画布；根元素默认
    `width="256" height="256"`，可用 `AvatarOptions.svgSize` 调整）。
 
-角色与颜色数据（`MultiavatarData.java`，约 86KB）由脚本从 `multiavatar.js` 自动提取生成，可追溯、可复现。
+角色与颜色数据（221 形状）由脚本从 `multiavatar.js` 自动提取，经 `DataDumpTool` 序列化为 gzip 资源
+`src/main/resources/multiavatar-data.gz`（约 25KB，解压约 92KB），`MultiavatarData` 首次类加载时解压一次构建只读 Map；
+可追溯、可复现（`src/test/.../DataDumpTool.java` 可从类再导出）。
 
 ---
 
@@ -173,7 +175,7 @@ src/main/java/com/cary/multiavatar/
 │   └── Renderers             #   简单工厂（Simple Factory）
 ├── data/
 │   ├── DataTables            # 单例（Singleton）：MultiavatarData 只读访问
-│   └── MultiavatarData       # 由脚本从 multiavatar.js 提取的 221 形状数据（约 86KB，未手改）
+│   └── MultiavatarData       # 221 形状数据（gzip 资源解压加载，约 25KB，对外 THEMES/PARTS 不变）
 └── util/
     ├── Hashes                # SHA-256 十六进制
     └── Strings               # 工具方法
