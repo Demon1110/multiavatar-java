@@ -1,0 +1,117 @@
+# 提交自动发布：push 到 master → 自动计算下一个版本 → 回归 → 发布 GitHub Packages → 打 tag → 创建 GitHub Release
+#
+# 版本规则（conventional commits，基于最新 tag 计算）：
+#   commit 含 "BREAKING" 或 "!:"  → major +1（如 1.0.11 → 2.0.0）
+#   commit 以 feat 开头            → minor +1（如 1.0.11 → 1.1.0）
+#   其他（fix/docs/refactor…）      → patch +1（如 1.0.11 → 1.0.12）
+#
+# 防循环/防冲突设计：
+#   - 自动提交带 "[skip ci]"，push 不会再次触发本工作流
+#   - concurrency 组保证同时只有一个发布任务在跑
+#   - 发布失败（回归不过 / deploy 403 等）时不打 tag、不创建 Release，版本号不浪费
+#   - 需要手动指定版本发布时用 publish.yml（workflow_dispatch）
+
+name: Auto Release
+
+on:
+  push:
+    branches: [ master ]
+
+permissions:
+  contents: write   # commit / tag / release 需要
+  packages: write   # 发布到 GitHub Packages 需要
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0          # 拉全历史，用于读最新 tag 与最近 commit message
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '8'
+          cache: maven
+
+      # 1) 计算下一个版本号
+      - name: Compute next version
+        id: version
+        run: |
+          git fetch --tags --force
+          LAST=$(git tag --sort=-v:refname | head -n1)
+          [ -z "$LAST" ] && LAST="v0.0.0"
+          BASE=${LAST#v}
+          MAJOR=${BASE%%.*}
+          REST=${BASE#*.}
+          MINOR=${REST%%.*}
+          PATCH=${REST#*.}
+          PATCH=${PATCH:-0}
+          MSG=$(git log -1 --pretty=%B)
+          if echo "$MSG" | grep -qiE 'breaking|!\s*:'; then
+            MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0
+          elif echo "$MSG" | grep -qiE '^feat.*:'; then
+            MINOR=$((MINOR+1)); PATCH=0
+          else
+            PATCH=$((PATCH+1))
+          fi
+          echo "next=$MAJOR.$MINOR.$PATCH" >> "$GITHUB_OUTPUT"
+          echo "next version: $MAJOR.$MINOR.$PATCH"
+
+      # 2) 更新 pom.xml 版本（maven-versions-plugin，构建期插件，非运行时依赖）
+      - name: Bump pom version
+        run: mvn -q -ntp versions:set -DnewVersion=${{ steps.version.outputs.next }} -DgenerateBackupPoms=false
+
+      # 3) 发布前回归（main 方法式检查，非 JUnit；Linux classpath 分隔符是冒号）
+      - name: Regression checks
+        run: |
+          mvn -q -ntp compile test-compile
+          CP="target/classes:target/test-classes"
+          java -cp "$CP" com.cary.multiavatar.SvgOptimizeCheck
+          java -cp "$CP" com.cary.multiavatar.OutputSmokeCheck
+          java -cp "$CP" com.cary.multiavatar.JpgFormatCheck
+          java -cp "$CP" com.cary.multiavatar.CacheCheck
+
+      # 4) 显式写 Maven settings（GITHUB_TOKEN 已声明 packages: write；不依赖 setup-java 注入）
+      - name: Write Maven settings
+        run: |
+          mkdir -p "$HOME/.m2"
+          cat > "$HOME/.m2/settings.xml" <<'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      # 5) 发布到 GitHub Packages（deploy 成功才继续打 tag，失败则整个流程中断、无 tag 产出）
+      - name: Deploy to GitHub Packages
+        run: mvn -B -ntp deploy
+
+      # 6) 提交版本号变更 + 打 tag + 创建 GitHub Release
+      - name: Tag and create GitHub Release
+        run: |
+          NEW=${{ steps.version.outputs.next }}
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pom.xml
+          git commit -m "release: v${NEW} [skip ci]"
+          git tag "v${NEW}"
+          git push origin "v${NEW}"
+          git push origin master
+          gh release create "v${NEW}" \
+            --title "v${NEW}" \
+            --notes "Auto release v${NEW} (Multiavatar pure Java, JDK8+, zero dependency)" \
+            --target master
