@@ -37,10 +37,36 @@ jobs:
           distribution: temurin
           java-version: '8'
           cache: maven
-          # 以下三项把 GITHUB_TOKEN 注入 Maven settings.xml 的 <server id="github">
-          server-id: github
-          server-username: ${{ github.actor }}
-          server-password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 显式写入 Maven settings.xml：token 由 workflow 表达式直接展开写入，
+      # 不依赖 setup-java 的 server 注入行为（避免该环节导致凭证缺失/字面量）
+      - name: Write Maven settings
+        run: |
+          mkdir -p "$HOME/.m2"
+          cat > "$HOME/.m2/settings.xml" <<'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+          echo "settings.xml written"
+
+      # 401 诊断（不打印任何密码）：验证 settings.xml 的 server 是否生成、GITHUB_TOKEN 是否有效
+      - name: Diagnose auth (no secrets printed)
+        run: |
+          echo "--- settings.xml server (github) ---"
+          if grep -q '<id>github</id>' "$HOME/.m2/settings.xml"; then
+            grep -A3 '<id>github</id>' "$HOME/.m2/settings.xml" | sed 's/<password>.*<\/password>/<password>***<\/password>/'
+          else
+            echo "MISSING: <server id=github> not found in settings.xml"
+          fi
+          echo "--- GITHUB_TOKEN status (200=valid) ---"
+          curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user
 
       # 发布前打印实际解析到的 deploy URL，便于失败时快速定位
       - name: Show resolved deploy URL
