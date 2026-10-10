@@ -53,15 +53,13 @@
         </plugins>
     </build>
 
-    <!-- GitHub Packages 发布目标。
-         ${env.GITHUB_REPOSITORY} 在 Actions 中自动展开为 owner/repo；
-         本地手动 mvn deploy 时该环境变量不存在会失败，请把 URL 写死为
-         https://maven.pkg.github.com/<OWNER>/<REPO> -->
+    <!-- GitHub Packages 发布目标：URL 写死（环境变量 ${env.GITHUB_REPOSITORY} 在
+         distributionManagement 中展开不可靠，会导致 deploy 404/400） -->
     <distributionManagement>
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/${env.GITHUB_REPOSITORY}</url>
+            <url>https://maven.pkg.github.com/Demon1110/multiavatar-java</url>
         </repository>
     </distributionManagement>
 </project>

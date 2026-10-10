@@ -29,10 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 8
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '8'
@@ -41,6 +41,10 @@ jobs:
           server-id: github
           server-username: ${{ github.actor }}
           server-password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 发布前打印实际解析到的 deploy URL，便于失败时快速定位
+      - name: Show resolved deploy URL
+        run: mvn -q -ntp help:evaluate -Dexpression=project.distributionManagement.repository.url -DforceStdout
 
       # 发布前跑一遍项目自带回归（main 方法式检查，非 JUnit）
       - name: Regression checks
