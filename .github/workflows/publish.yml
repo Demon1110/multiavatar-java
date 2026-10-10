@@ -39,7 +39,8 @@ jobs:
           cache: maven
 
       # 显式写入 Maven settings.xml：token 由 workflow 表达式直接展开写入，
-      # 不依赖 setup-java 的 server 注入行为（避免该环节导致凭证缺失/字面量）
+      # 不依赖 setup-java 的 server 注入行为（避免该环节导致凭证缺失/字面量）。
+      # 用 GITHUB_TOKEN（workflow 已声明 packages: write；fine-grained PAT 不支持 Packages 权限，无法用于发布）
       - name: Write Maven settings
         run: |
           mkdir -p "$HOME/.m2"
@@ -49,7 +50,7 @@ jobs:
               <server>
                 <id>github</id>
                 <username>${{ github.actor }}</username>
-                <password>${{ secrets.ACTION_TOKEN }}</password>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
               </server>
             </servers>
           </settings>
@@ -60,12 +61,12 @@ jobs:
       - name: Show resolved deploy URL
         run: mvn -q -ntp help:evaluate -Dexpression=project.distributionManagement.repository.url -DforceStdout
 
-      # 认证诊断（不打印 token 值）：探测 PAT 对该仓库是否有读权限
-      # 200 = PAT 有效且仓库已授权；403 = PAT 未授权该仓库 / 权限不足；404 = 仓库不存在
+      # 认证诊断（不打印 token 值）：探测 GITHUB_TOKEN 对仓库的访问状态
+      # 200 = token 有效且可访问仓库；403 = 仓库级 Workflow permissions 被设为只读
       - name: Diagnose auth (no secrets printed)
         run: |
-          echo "--- ACTION_TOKEN repo access (200=ok, 403=not authorized) ---"
-          curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer ${{ secrets.ACTION_TOKEN }}" "https://api.github.com/repos/${{ github.repository }}"
+          echo "--- GITHUB_TOKEN repo access (200=ok, 403=readonly workflow permissions) ---"
+          curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ github.repository }}"
 
       # 发布前跑一遍项目自带回归（main 方法式检查，非 JUnit）
       # 注意：Linux 上 classpath 分隔符是冒号 :（Windows 才是分号 ;）
