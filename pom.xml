@@ -4,13 +4,41 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.cary</groupId>
+    <!-- groupId 必须为已验证所有权的 namespace：
+         Central 拒绝通用域名（com.cary）；改用 GitHub 用户名 namespace（io.github.<user>，
+         在 Central Portal 添加并验证）。Java 包名保持 com.cary.multiavatar 不影响发布 -->
+    <groupId>io.github.demon1110</groupId>
     <artifactId>multiavatar-java</artifactId>
     <version>1.1.2</version>
     <packaging>jar</packaging>
 
     <name>Multiavatar (Pure Java)</name>
     <description>Multiavatar 纯 Java 实现 —— 移植自 multiavatar.js，无任何第三方依赖，JDK 8+ 可运行</description>
+    <url>https://github.com/Demon1110/multiavatar-java</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>Demon1110</id>
+            <name>Demon1110</name>
+            <email>852232096@qq.com</email>
+            <url>https://github.com/Demon1110</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/Demon1110/multiavatar-java.git</connection>
+        <developerConnection>scm:git:https://github.com/Demon1110/multiavatar-java.git</developerConnection>
+        <url>https://github.com/Demon1110/multiavatar-java</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -50,16 +78,62 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--    Maven插件发布    -->
+            <!-- 0.11.0：修复旧版解析 Portal 响应 warnings 字段失败；0.5.0 起已移除 tokenAuth 参数
+                 （凭证一律走 settings.xml 的 <server id="central"> user token） -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.11.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>false</autoPublish>
+                </configuration>
+            </plugin>
+
+
+            <!--    签名插件        -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <!-- 3.2.7：修复 gpg 2.5.x 的版本检测（3.2.5 报 Could not determine gpg version） -->
+                <version>3.2.7</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--     生成源javadocs文件       -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.2.0</version>
+                <configuration>
+                    <!-- 源码为 UTF-8：不显式指定时 Windows 下 javadoc 按 GBK 读源码导致"程序包不存在" -->
+                    <encoding>UTF-8</encoding>
+                    <charset>UTF-8</charset>
+                    <docencoding>UTF-8</docencoding>
+                    <!-- JDK8 默认 doclint 对中文注释/内部链接过严，关闭避免误报 -->
+                    <doclint>none</doclint>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
-    <!-- GitHub Packages 发布目标：URL 写死（环境变量 ${env.GITHUB_REPOSITORY} 在
-         distributionManagement 中展开不可靠，会导致 deploy 404/400） -->
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/Demon1110/multiavatar-java</url>
-        </repository>
-    </distributionManagement>
+    <!-- 发布走 Central Portal 新流程：central-publishing-maven-plugin（见上方 build/plugins）已接管 deploy，
+         无需 distributionManagement；settings.xml 需配 <server id="central"> 的用户名+token -->
 </project>
