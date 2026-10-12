@@ -47,6 +47,24 @@ Multiavatar —— 多文化头像生成器（Multicultural Avatar Maker）的**
 
 ## 使用方式
 
+### 引入依赖（Maven Central）
+
+发布坐标 `io.github.demon1110:multiavatar-java`，**零传递依赖**（pom 的 `<dependencies>` 为空）：
+
+```xml
+<dependency>
+    <groupId>io.github.demon1110</groupId>
+    <artifactId>multiavatar-java</artifactId>
+    <version>1.1.2</version>
+</dependency>
+```
+
+Gradle：
+
+```groovy
+implementation 'io.github.demon1110:multiavatar-java:1.1.2'
+```
+
 ### 作为库调用（SVG）
 
 ```java
